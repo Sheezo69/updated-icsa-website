@@ -1,0 +1,59 @@
+server {
+    listen 80;
+    listen [::]:80;
+    server_name your-domain.example;
+
+    root /var/www/icsa-international/public;
+    index index.php;
+
+    access_log /var/log/nginx/icsa-international.access.log;
+    error_log /var/log/nginx/icsa-international.error.log;
+
+    client_max_body_size 16m;
+
+    add_header X-Content-Type-Options "nosniff" always;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /favicon.ico {
+        access_log off;
+        log_not_found off;
+    }
+
+    location = /robots.txt {
+        access_log off;
+        log_not_found off;
+    }
+
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        fastcgi_param DOCUMENT_ROOT $realpath_root;
+        fastcgi_index index.php;
+
+        # Update this to match your PHP-FPM setup.
+        # Common examples:
+        # fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+        # fastcgi_pass unix:/opt/homebrew/var/run/php-fpm.sock;
+        # fastcgi_pass 127.0.0.1:9000;
+        fastcgi_pass 127.0.0.1:9000;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+
+    # Block access to sensitive Laravel directories (matches .htaccess rules)
+    location ~ ^/(app|bootstrap|config|database|resources|routes|storage|tests|vendor|__laravel_tmp__|tmp)(/|$) {
+        deny all;
+        return 404;
+    }
+
+    location ~* \.(?:css|js|jpg|jpeg|gif|png|svg|webp|ico|woff|woff2)$ {
+        expires 7d;
+        access_log off;
+        add_header Cache-Control "public";
+    }
+}
