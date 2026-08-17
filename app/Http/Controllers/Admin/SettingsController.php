@@ -33,7 +33,18 @@ class SettingsController extends Controller
             'new_password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        if (! Hash::check($data['current_password'], $admin->password_hash)) {
+        $storedHash = $admin->password_hash;
+
+        $currentPasswordValid = false;
+
+        if (preg_match('/^\$(2y|2a|2b)\$/', $storedHash)) {
+            $currentPasswordValid = Hash::check($data['current_password'], $storedHash);
+        } else {
+            // Legacy or non-bcrypt hash — verify with PHP's password_verify
+            $currentPasswordValid = password_verify($data['current_password'], $storedHash);
+        }
+
+        if (! $currentPasswordValid) {
             return back()->with('error', 'Current password is incorrect.');
         }
 

@@ -39,12 +39,30 @@ class AuthController extends Controller
             ]);
         }
 
-        if (! Hash::check($credentials['password'], $admin->password_hash)) {
-            $admin->recordFailedLogin();
+        $storedHash = $admin->password_hash;
 
-            return back()->withInput($request->only('username'))->withErrors([
-                'username' => 'Invalid username or password.',
-            ]);
+        // If the stored hash is bcrypt (starts with $2y$, $2a$, or $2b$) use Laravel's Hash::check.
+        if (preg_match('/^\$(2y|2a|2b)\$/', $storedHash)) {
+            if (! Hash::check($credentials['password'], $storedHash)) {
+                $admin->recordFailedLogin();
+
+                return back()->withInput($request->only('username'))->withErrors([
+                    'username' => 'Invalid username or password.',
+                ]);
+            }
+        } else {
+            // Legacy or non-bcrypt hash (e.g., PHP's password_hash with PASSWORD_DEFAULT/argon2).
+            // Use password_verify to support those hashes. On successful verification, migrate to Laravel's Hash (bcrypt).
+            if (! password_verify($credentials['password'], $storedHash)) {
+                $admin->recordFailedLogin();
+
+                return back()->withInput($request->only('username'))->withErrors([
+                    'username' => 'Invalid username or password.',
+                ]);
+            }
+
+            // Migrate legacy hash to bcrypt for future logins
+            $admin->forceFill(['password_hash' => Hash::make($credentials['password'])])->save();
         }
 
         $admin->clearLoginFailures();
