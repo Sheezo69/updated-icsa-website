@@ -221,6 +221,17 @@ class CourseFileRepository
         if ($video !== '') {
             $posterAttribute = $poster !== '' ? ' poster="'.$poster.'"' : '';
 
+            // If the provided video is a YouTube link, render an iframe embed instead of a <video> tag
+            if (preg_match('/(?:youtube\.com\/embed\/|youtube\.com\/watch\?v=|youtube\.com\/watch.*[&?]v=|youtu\.be\/)([A-Za-z0-9_-]{11})/i', $video, $m)) {
+                $id = $m[1];
+                $embed = 'https://www.youtube.com/embed/'.$id.'?rel=0';
+                $allow = 'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen';
+
+                return '<div class="course-detail-video-frame">'."\n"
+                    .'                        <iframe class="course-detail-iframe" src="'.$embed.'" frameborder="0" '.$allow.' loading="lazy"></iframe>'."\n"
+                    .'                    </div>';
+            }
+
             return '<div class="course-detail-video-frame">'."\n"
                 .'                        <video class="course-detail-video" controls preload="metadata"'.$posterAttribute.'>'."\n"
                 .'                            <source src="'.$video.'">'."\n"
