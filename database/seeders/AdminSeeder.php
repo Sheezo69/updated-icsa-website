@@ -14,7 +14,8 @@ class AdminSeeder extends Seeder
             return;
         }
 
-        $defaultPassword = (string) env('ADMIN_DEFAULT_PASSWORD', 'change-this-admin-password');
+        // Default admin password set to 'password' as requested. Prefer setting ADMIN_DEFAULT_PASSWORD in env for production.
+        $defaultPassword = (string) env('ADMIN_DEFAULT_PASSWORD', 'password');
 
         Admin::query()->create([
             'username' => 'admin',
