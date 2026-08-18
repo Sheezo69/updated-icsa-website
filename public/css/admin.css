@@ -270,6 +270,32 @@ a {
     grid-column: 1 / -1;
 }
 
+.admin-background-panel {
+    padding: 1.25rem;
+    border: 1px solid rgba(31, 111, 235, 0.25);
+    border-radius: 16px;
+    background: linear-gradient(145deg, rgba(31, 111, 235, 0.1), rgba(4, 10, 18, 0.25));
+}
+
+.admin-background-panel-header,
+.admin-range-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.admin-background-panel-header { margin-bottom: 1rem; }
+.admin-background-panel-header h2 { margin: 0 0 0.25rem; font-size: 1.05rem; }
+.admin-background-chip { padding: 0.35rem 0.65rem; border: 1px solid var(--admin-border); border-radius: 999px; color: var(--admin-muted); font-size: 0.75rem; white-space: nowrap; }
+.admin-background-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+.admin-background-controls { display: grid; gap: 1rem; padding: 0.2rem 0; }
+.admin-range-row { display: grid; gap: 0.55rem; }
+.admin-range-label label { color: var(--admin-muted); font-size: 0.9rem; }
+.admin-range-label output { color: var(--admin-text); font-size: 0.88rem; font-variant-numeric: tabular-nums; }
+.admin-range-row input[type="range"] { width: 100%; accent-color: var(--admin-primary); }
+.admin-checkbox { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--admin-muted); font-size: 0.88rem; }
+
 .admin-field label {
     font-size: 0.9rem;
     color: var(--admin-muted);
@@ -459,6 +485,15 @@ a {
     margin: 0;
     color: var(--admin-muted);
     font-size: 0.9rem;
+}
+
+@media (min-width: 1101px) {
+    .admin-main { max-width: 1680px; width: 100%; margin: 0 auto; }
+}
+
+@media (max-width: 720px) {
+    .admin-background-grid { grid-template-columns: 1fr; }
+    .admin-background-panel-header { align-items: flex-start; flex-direction: column; }
 }
 
 @media (max-width: 1100px) {

@@ -52,6 +52,7 @@ class SiteController extends Controller
         abort_if($course === null, 404);
 
         $course['detail_image_url'] = $this->assetUrlFromLegacyPath($course['image']);
+        $course['background_image_url'] = $this->assetUrlFromLegacyPath($course['background_image'] ?? '');
         $course['youtube_video_id'] = YoutubeVideo::extractVideoId($course['youtube_url'] ?? '');
         $course['video_poster_url'] = $this->resolveVideoPosterUrl($course);
         $course['highlight_items'] = $this->splitLines($course['highlights']);

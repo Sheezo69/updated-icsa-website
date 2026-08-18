@@ -79,6 +79,7 @@ class CourseController extends Controller
         $course = $courses->find($slug);
         if ($course) {
             $this->deletePublicMedia($course['video_thumbnail'] ?? '');
+            $this->deletePublicMedia($course['background_image'] ?? '');
         }
 
         $courses->delete($slug);
@@ -96,6 +97,11 @@ class CourseController extends Controller
             'diploma_type' => ['nullable', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:1000'],
             'image' => ['nullable', 'string', 'max:255'],
+            'background_image' => ['nullable', 'string', 'max:255'],
+            'background_image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:10240'],
+            'remove_background_image' => ['nullable', 'boolean'],
+            'background_darkness' => ['nullable', 'integer', 'min:0', 'max:100'],
+            'background_blur' => ['nullable', 'integer', 'min:0', 'max:20'],
             'youtube_url' => [
                 'nullable',
                 'string',
@@ -130,9 +136,12 @@ class CourseController extends Controller
             'diploma_type' => '',
             'description' => '',
             'image' => '',
+            'background_image' => '',
+            'background_darkness' => 0,
+            'background_blur' => 0,
             'youtube_url' => '',
             'video_thumbnail' => '',
-            'price' => 'Contact for Price',
+            'price' => '',
             'price_note' => 'Flexible payment options available',
             'highlights' => "Practical classroom approach\nCertificate on completion\nCareer-focused learning\nInstructor-led guidance",
             'overview' => '',
@@ -156,9 +165,24 @@ class CourseController extends Controller
             $data['video_thumbnail'] = $this->storePublicMedia($request->file('video_thumbnail_file'), 'course-video-thumbnails', $slug);
         }
 
+        if ($request->boolean('remove_background_image')) {
+            $this->deletePublicMedia($data['background_image'] ?? '');
+            $data['background_image'] = '';
+        }
+
+        if ($request->hasFile('background_image_file')) {
+            $this->deletePublicMedia($data['background_image'] ?? '');
+            $data['background_image'] = $this->storePublicMedia($request->file('background_image_file'), 'course-backgrounds', $slug);
+        }
+
+        $data['background_darkness'] = (int) ($data['background_darkness'] ?? 0);
+        $data['background_blur'] = (int) ($data['background_blur'] ?? 0);
+
         unset(
             $data['video_thumbnail_file'],
             $data['remove_video_thumbnail'],
+            $data['background_image_file'],
+            $data['remove_background_image'],
         );
     }
 

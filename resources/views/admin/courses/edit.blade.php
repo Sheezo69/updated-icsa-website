@@ -1,16 +1,17 @@
 @extends('admin.layout')
 
 @section('title', $isEdit ? 'Edit Course' : 'Add Course')
-@section('subtitle', 'Update the course HTML content while keeping the legacy frontend structure intact.')
+@section('subtitle', 'Manage the course details, media, and page appearance.')
 
 @section('content')
     <section class="admin-card">
-        <form method="POST" action="{{ $isEdit ? route('admin.courses.update', $course['slug']) : route('admin.courses.store') }}" class="admin-form-grid" enctype="multipart/form-data">
+        <form method="POST" action="{{ $isEdit ? route('admin.courses.update', $course['slug'], false) : route('admin.courses.store', [], false) }}" class="admin-form-grid" enctype="multipart/form-data">
             @csrf
             @if ($isEdit)
                 @method('PUT')
             @endif
             <input type="hidden" name="video_thumbnail" value="{{ old('video_thumbnail', $course['video_thumbnail'] ?? '') }}">
+            <input type="hidden" name="background_image" value="{{ old('background_image', $course['background_image'] ?? '') }}">
 
             <div class="admin-field">
                 <label for="title">Title</label>
@@ -40,6 +41,41 @@
             <div class="admin-field">
                 <label for="image">Image Path</label>
                 <input id="image" name="image" class="admin-input" value="{{ old('image', $course['image']) }}" placeholder="../images/detail-course.jpg">
+            </div>
+
+            <div class="admin-background-panel admin-field-full">
+                <div class="admin-background-panel-header">
+                    <div>
+                        <h2>Hero Background</h2>
+                        <p class="admin-note">Choose an image and adjust how it appears behind the course title.</p>
+                    </div>
+                    <span class="admin-background-chip">JPG · PNG · WEBP · GIF</span>
+                </div>
+
+                <div class="admin-background-grid">
+                    <div class="admin-field">
+                        <label for="background_image_file">Background Image</label>
+                        <input id="background_image_file" type="file" name="background_image_file" class="admin-input" accept="image/jpeg,image/png,image/webp,image/gif">
+                        @if (! empty($course['background_image']))
+                            <p class="admin-note">Current: {{ $course['background_image'] }}</p>
+                            <label class="admin-checkbox">
+                                <input type="checkbox" name="remove_background_image" value="1">
+                                Remove current image
+                            </label>
+                        @endif
+                    </div>
+
+                    <div class="admin-background-controls">
+                        <div class="admin-range-row">
+                            <div class="admin-range-label"><label for="background_darkness">Darkness</label><output>{{ old('background_darkness', $course['background_darkness'] ?? 0) }}%</output></div>
+                            <input id="background_darkness" type="range" name="background_darkness" min="0" max="100" step="1" value="{{ old('background_darkness', $course['background_darkness'] ?? 0) }}" oninput="this.previousElementSibling.querySelector('output').value = this.value + '%'">
+                        </div>
+                        <div class="admin-range-row">
+                            <div class="admin-range-label"><label for="background_blur">Blur</label><output>{{ old('background_blur', $course['background_blur'] ?? 0) }}px</output></div>
+                            <input id="background_blur" type="range" name="background_blur" min="0" max="20" step="1" value="{{ old('background_blur', $course['background_blur'] ?? 0) }}" oninput="this.previousElementSibling.querySelector('output').value = this.value + 'px'">
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="admin-field admin-field-full">

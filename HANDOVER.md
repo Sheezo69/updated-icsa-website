@@ -63,3 +63,4 @@
 - `.env.example` - updated `APP_URL` default
 - `README.md` - URLs updated to `/icsa-international`
 - `deploy/nginx/icsa-international.conf.example` - added security rules
+ 67

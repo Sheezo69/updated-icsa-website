@@ -970,7 +970,11 @@ ul {
 .filter-btn.active { background: var(--primary); color: var(--white); }
 
 /* Course Detail */
-.course-detail-hero { position: relative; overflow: hidden; background: linear-gradient(135deg, #081a33 0%, #041225 100%); padding: 4rem 0; color: var(--white); }
+.course-detail-hero { position: relative; overflow: hidden; background: linear-gradient(135deg, #081a33 0%, #041225 100%); background-position: center; background-size: cover; padding: 4rem 0; color: var(--white); }
+.course-detail-hero.has-course-background { background: #111827; }
+.course-detail-background-media, .course-detail-background-overlay { position: absolute; inset: 0; width: 100%; height: 100%; }
+.course-detail-background-media { z-index: 0; background-position: center; background-size: cover; background-repeat: no-repeat; object-fit: cover; filter: blur(var(--course-background-blur, 0px)); transform: scale(1.04); }
+.course-detail-background-overlay { z-index: 0; background: rgba(0, 0, 0, calc(var(--course-background-darkness, 0%) / 100)); pointer-events: none; }
 .course-detail-hero::before, .course-detail-hero::after { display: none; }
 .course-detail-grid { position: relative; z-index: 1; display: grid; grid-template-columns: 2fr 1fr; gap: 2.4rem; align-items: start; }
 .course-detail-grid::before { content: ''; position: absolute; inset: 0; pointer-events: none; background-image: linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px); background-size: 26px 26px; opacity: 0.5; mask-image: radial-gradient(circle at center, rgba(0,0,0,0.95) 35%, rgba(0,0,0,0) 90%); }
@@ -1097,6 +1101,24 @@ ul {
 .form-textarea { min-height: 120px; resize: vertical; }
 .inquiry-form .btn-primary { margin-top: 0.25rem; width: 100%; box-shadow: 0 10px 20px rgba(201,162,39,0.28); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+/* Moving student testimonials on course pages */
+.course-inquiry-column { min-width: 0; }
+.course-testimonials { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,.13); }
+.course-testimonials-viewport { overflow: hidden; margin: 0 -1rem; padding: .25rem 1rem; }
+.course-testimonials-track { display: flex; width: max-content; gap: 1.6rem; animation: course-testimonials-scroll 38s linear infinite; }
+.course-testimonials-viewport:hover .course-testimonials-track { animation-play-state: paused; }
+.course-testimonial-card { width: min(340px, calc(100vw - 4rem)); min-height: 320px; box-sizing: border-box; display: flex; flex-direction: column; padding: 1.4rem; border: 1px solid rgba(255,255,255,.12); border-radius: 20px; background: rgba(255,255,255,.055); box-shadow: inset 0 1px rgba(255,255,255,.04); color: var(--white); }
+.course-testimonial-card header { display: grid; grid-template-columns: 46px 1fr auto; gap: .75rem; align-items: center; }
+.course-testimonial-avatar { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 50%; color: #fff; font-weight: 800; }
+.avatar-purple { background: #4438ca; }.avatar-orange { background: #c96508; }.avatar-teal { background: #088b82; }.avatar-pink { background: #c51464; }
+.course-testimonial-card strong { display: block; font-size: .96rem; }.course-testimonial-card small { display: block; margin-top: .2rem; color: rgba(255,255,255,.43); font-size: .76rem; }
+.course-testimonial-card em { align-self: center; padding: .35rem .55rem; border: 1px solid rgba(0,207,212,.35); border-radius: 999px; color: #17c7d2; background: rgba(0,207,212,.1); font-size: .67rem; font-style: normal; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.course-testimonial-stars { margin-top: 1.25rem; color: #f7a716; letter-spacing: .16em; font-size: .95rem; }.course-testimonial-stars span { color: rgba(247,167,22,.35); }
+.course-testimonial-card p { margin: 1rem 0; color: rgba(255,255,255,.68); font-size: .91rem; line-height: 1.65; }
+.course-testimonial-card footer { margin-top: auto; padding-top: .9rem; border-top: 1px solid rgba(255,255,255,.1); color: rgba(255,255,255,.36); font-size: .8rem; }
+@keyframes course-testimonials-scroll { to { transform: translateX(calc(-50% - .8rem)); } }
+
 
 /* About */
 .about-hero { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); padding: 6rem 0; text-align: center; color: var(--white); position: relative; overflow: hidden; }
