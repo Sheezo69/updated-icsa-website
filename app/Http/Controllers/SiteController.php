@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\CourseFileRepository;
+use App\Support\YoutubeVideo;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -51,8 +52,8 @@ class SiteController extends Controller
         abort_if($course === null, 404);
 
         $course['detail_image_url'] = $this->assetUrlFromLegacyPath($course['image']);
-        $course['video_url'] = $this->assetUrlFromLegacyPath($course['video_path'] ?? '');
-        $course['video_thumbnail_url'] = $this->assetUrlFromLegacyPath($course['video_thumbnail'] ?? '') ?? $course['detail_image_url'];
+        $course['youtube_video_id'] = YoutubeVideo::extractVideoId($course['youtube_url'] ?? '');
+        $course['video_poster_url'] = $this->resolveVideoPosterUrl($course);
         $course['highlight_items'] = $this->splitLines($course['highlights']);
         $course['learning_outcome_items'] = $this->splitLines($course['learning_outcomes']);
         $course['target_audience_items'] = $this->splitLines($course['target_audience']);
@@ -61,6 +62,25 @@ class SiteController extends Controller
         return view('site.course', [
             'course' => $course,
         ]);
+    }
+
+    private function resolveVideoPosterUrl(array $course): ?string
+    {
+        $customPoster = $this->assetUrlFromLegacyPath($course['video_thumbnail'] ?? '');
+
+        if ($customPoster) {
+            return $customPoster;
+        }
+
+        if (! empty($course['detail_image_url'])) {
+            return $course['detail_image_url'];
+        }
+
+        if (! empty($course['youtube_video_id'])) {
+            return YoutubeVideo::thumbnailUrl($course['youtube_video_id']);
+        }
+
+        return null;
     }
 
     private function splitLines(?string $value): array

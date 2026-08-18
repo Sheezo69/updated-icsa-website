@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Support\CourseFileRepository;
+use App\Support\YoutubeVideo;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -54,7 +55,7 @@ class CourseController extends Controller
     public function store(Request $request, CourseFileRepository $courses): RedirectResponse
     {
         $data = $this->validatedCourse($request);
-        $this->handleCourseMediaUploads($request, $data);
+        $this->handleCourseThumbnailUpload($request, $data);
         $slug = $courses->save($data);
 
         return redirect()
@@ -65,7 +66,7 @@ class CourseController extends Controller
     public function update(Request $request, string $slug, CourseFileRepository $courses): RedirectResponse
     {
         $data = $this->validatedCourse($request);
-        $this->handleCourseMediaUploads($request, $data);
+        $this->handleCourseThumbnailUpload($request, $data);
         $newSlug = $courses->save($data, $slug);
 
         return redirect()
@@ -77,7 +78,6 @@ class CourseController extends Controller
     {
         $course = $courses->find($slug);
         if ($course) {
-            $this->deletePublicMedia($course['video_path'] ?? '');
             $this->deletePublicMedia($course['video_thumbnail'] ?? '');
         }
 
@@ -96,11 +96,18 @@ class CourseController extends Controller
             'diploma_type' => ['nullable', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:1000'],
             'image' => ['nullable', 'string', 'max:255'],
-            'video_path' => ['nullable', 'string', 'max:255'],
+            'youtube_url' => [
+                'nullable',
+                'string',
+                'max:500',
+                static function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($value && ! YoutubeVideo::extractVideoId((string) $value)) {
+                        $fail('Enter a valid YouTube link (watch, youtu.be, or embed URL).');
+                    }
+                },
+            ],
             'video_thumbnail' => ['nullable', 'string', 'max:255'],
-            'video_file' => ['nullable', 'file', 'mimetypes:video/mp4,video/webm,video/ogg', 'max:204800'],
             'video_thumbnail_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
-            'remove_video' => ['nullable', 'boolean'],
             'remove_video_thumbnail' => ['nullable', 'boolean'],
             'price' => ['nullable', 'string', 'max:120'],
             'price_note' => ['nullable', 'string', 'max:255'],
@@ -123,7 +130,7 @@ class CourseController extends Controller
             'diploma_type' => '',
             'description' => '',
             'image' => '',
-            'video_path' => '',
+            'youtube_url' => '',
             'video_thumbnail' => '',
             'price' => 'Contact for Price',
             'price_note' => 'Flexible payment options available',
@@ -135,23 +142,13 @@ class CourseController extends Controller
         ];
     }
 
-    private function handleCourseMediaUploads(Request $request, array &$data): void
+    private function handleCourseThumbnailUpload(Request $request, array &$data): void
     {
         $slug = Str::slug((string) ($data['title'] ?? 'course')) ?: 'course';
-
-        if ($request->boolean('remove_video')) {
-            $this->deletePublicMedia($data['video_path'] ?? '');
-            $data['video_path'] = '';
-        }
 
         if ($request->boolean('remove_video_thumbnail')) {
             $this->deletePublicMedia($data['video_thumbnail'] ?? '');
             $data['video_thumbnail'] = '';
-        }
-
-        if ($request->hasFile('video_file')) {
-            $this->deletePublicMedia($data['video_path'] ?? '');
-            $data['video_path'] = $this->storePublicMedia($request->file('video_file'), 'course-videos', $slug);
         }
 
         if ($request->hasFile('video_thumbnail_file')) {
@@ -160,9 +157,7 @@ class CourseController extends Controller
         }
 
         unset(
-            $data['video_file'],
             $data['video_thumbnail_file'],
-            $data['remove_video'],
             $data['remove_video_thumbnail'],
         );
     }

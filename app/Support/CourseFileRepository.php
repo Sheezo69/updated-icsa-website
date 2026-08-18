@@ -53,8 +53,11 @@ class CourseFileRepository
         preg_match('/<p class=["\']course-detail-description["\']>(.*?)<\/p>/is', $content, $descriptionMatch);
         preg_match('/<!--\s*course-image:\s*(.*?)\s*-->/is', $content, $imageCommentMatch);
         preg_match('/<img src=["\']([^"\']+)["\'].*?class=["\']course-detail-image["\']/is', $content, $imageMatch);
+        preg_match('/<!--\s*course-youtube:\s*(.*?)\s*-->/is', $content, $youtubeCommentMatch);
         preg_match('/<!--\s*course-video:\s*(.*?)\s*-->/is', $content, $videoCommentMatch);
         preg_match('/<!--\s*course-video-thumbnail:\s*(.*?)\s*-->/is', $content, $videoThumbnailCommentMatch);
+        preg_match('/data-youtube-id=["\']([^"\']+)["\']/is', $content, $youtubeIdMatch);
+        preg_match('/class=["\']course-youtube-poster["\'][^>]*src=["\']([^"\']+)["\']/is', $content, $youtubePosterMatch);
         preg_match('/<video[^>]*class=["\']course-detail-video["\'][^>]*>.*?<source src=["\']([^"\']+)["\']/is', $content, $videoMatch);
         preg_match('/<video[^>]*class=["\']course-detail-video["\'][^>]*poster=["\']([^"\']+)["\']/is', $content, $videoPosterMatch);
         preg_match('/<div class=["\']price["\']>(.*?)<\/div>/is', $content, $priceMatch);
@@ -76,8 +79,12 @@ class CourseFileRepository
             'diploma_type' => $this->cleanText($meta[2] ?? ''),
             'description' => $this->cleanText($descriptionMatch[1] ?? ''),
             'image' => trim((string) ($imageCommentMatch[1] ?? $imageMatch[1] ?? '')),
-            'video_path' => trim((string) ($videoCommentMatch[1] ?? $videoMatch[1] ?? '')),
-            'video_thumbnail' => trim((string) ($videoThumbnailCommentMatch[1] ?? $videoPosterMatch[1] ?? '')),
+            'youtube_url' => $this->resolveYoutubeUrl(
+                trim((string) ($youtubeCommentMatch[1] ?? '')),
+                trim((string) ($videoCommentMatch[1] ?? $videoMatch[1] ?? '')),
+                trim((string) ($youtubeIdMatch[1] ?? '')),
+            ),
+            'video_thumbnail' => trim((string) ($videoThumbnailCommentMatch[1] ?? $youtubePosterMatch[1] ?? $videoPosterMatch[1] ?? '')),
             'price' => $this->cleanText($priceMatch[1] ?? 'Contact for Price'),
             'price_note' => $this->cleanText($priceNoteMatch[1] ?? 'Flexible payment options available'),
             'highlights' => $this->htmlToPlain($highlightsMatch[1] ?? ''),
@@ -193,7 +200,7 @@ class CourseFileRepository
             'DIPLOMA_TYPE' => e((string) ($input['diploma_type'] ?? '')),
             'DESCRIPTION' => e((string) ($input['description'] ?? '')),
             'IMAGE' => e((string) ($input['image'] ?? '')),
-            'VIDEO_PATH' => e((string) ($input['video_path'] ?? '')),
+            'YOUTUBE_URL' => e((string) ($input['youtube_url'] ?? '')),
             'VIDEO_THUMBNAIL' => e((string) ($input['video_thumbnail'] ?? '')),
             'COURSE_MEDIA' => $this->courseMediaHtml($input),
             'PRICE' => e((string) ($input['price'] ?? 'Contact for Price')),
@@ -209,35 +216,46 @@ class CourseFileRepository
 
     private function courseMediaHtml(array $input): string
     {
-        $title = e((string) ($input['title'] ?? 'Course'));
-        $image = e((string) ($input['image'] ?? ''));
-        $video = e((string) ($input['video_path'] ?? ''));
-        $poster = e((string) ($input['video_thumbnail'] ?? ''));
+        $title = (string) ($input['title'] ?? 'Course');
+        $image = trim((string) ($input['image'] ?? ''));
+        $videoId = YoutubeVideo::extractVideoId((string) ($input['youtube_url'] ?? ''));
 
-        if ($poster === '') {
-            $poster = $image;
-        }
+        if ($videoId) {
+            $poster = trim((string) ($input['video_thumbnail'] ?? ''));
 
-        if ($video !== '') {
-            $posterAttribute = $poster !== '' ? ' poster="'.$poster.'"' : '';
+            if ($poster === '') {
+                $poster = $image !== '' ? $image : YoutubeVideo::thumbnailUrl($videoId);
+            }
 
-            return '<div class="course-detail-video-frame">'."\n"
-                .'                        <video class="course-detail-video" controls preload="metadata"'.$posterAttribute.'>'."\n"
-                .'                            <source src="'.$video.'">'."\n"
-                .'                            Your browser does not support the video tag.'."\n"
-                .'                        </video>'."\n"
-                .'                    </div>';
+            return YoutubeVideo::facadeHtml($videoId, $poster, $title);
         }
 
         if ($image !== '') {
-            return '<img src="'.$image.'" alt="'.$title.'" class="course-detail-image" loading="lazy">';
+            return '<img src="'.e($image).'" alt="'.e($title).'" class="course-detail-image" loading="lazy">';
         }
 
         return '<div class="course-image-placeholder">'."\n"
             .'                        <i class="fas fa-image"></i>'."\n"
             .'                        <p>Course media pending</p>'."\n"
-            .'                        <span>Add an image or video from the admin portal.</span>'."\n"
+            .'                        <span>Add an image or YouTube link from the admin portal.</span>'."\n"
             .'                    </div>';
+    }
+
+    private function resolveYoutubeUrl(string $youtubeComment, string $legacyVideoValue, string $embeddedVideoId): string
+    {
+        if ($youtubeComment !== '') {
+            return $youtubeComment;
+        }
+
+        if ($embeddedVideoId !== '') {
+            return 'https://www.youtube.com/watch?v='.$embeddedVideoId;
+        }
+
+        if ($legacyVideoValue !== '' && YoutubeVideo::extractVideoId($legacyVideoValue)) {
+            return $legacyVideoValue;
+        }
+
+        return '';
     }
 
     private function templateFragments(): array
@@ -273,7 +291,7 @@ class CourseFileRepository
 <body>
     {{HEADER}}
     <!-- course-image: {{IMAGE}} -->
-    <!-- course-video: {{VIDEO_PATH}} -->
+    <!-- course-youtube: {{YOUTUBE_URL}} -->
     <!-- course-video-thumbnail: {{VIDEO_THUMBNAIL}} -->
 
     <section class="course-detail-hero">

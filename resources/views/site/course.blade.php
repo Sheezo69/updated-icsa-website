@@ -28,13 +28,12 @@
                     <p class="course-detail-description">{{ $course['description'] }}</p>
                 </div>
                 <aside class="course-detail-card">
-                    @if ($course['video_url'])
-                        <div class="course-detail-video-frame">
-                            <video class="course-detail-video" controls preload="metadata" @if ($course['video_thumbnail_url']) poster="{{ $course['video_thumbnail_url'] }}" @endif>
-                                <source src="{{ $course['video_url'] }}">
-                                Your browser does not support the video tag.
-                            </video>
-                        </div>
+                    @if ($course['youtube_video_id'] && $course['video_poster_url'])
+                        @include('site.partials.youtube-player', [
+                            'videoId' => $course['youtube_video_id'],
+                            'posterUrl' => $course['video_poster_url'],
+                            'title' => $course['title'],
+                        ])
                     @elseif ($course['detail_image_url'])
                         <img src="{{ $course['detail_image_url'] }}" alt="{{ $course['title'] }}" class="course-detail-image" loading="lazy">
                     @endif
