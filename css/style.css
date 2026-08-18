@@ -998,7 +998,15 @@ ul {
 .course-detail-card { position: sticky; top: 110px; background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%); border: 1px solid #dbe7f3; border-radius: 18px; padding: 2rem; box-shadow: 0 22px 40px rgba(9,28,51,0.22); }
 .course-detail-image { width: 100%; height: 220px; object-fit: cover; border-radius: 12px; border: 1px solid #e1e8f0; margin-bottom: 1.5rem; box-shadow: 0 10px 24px rgba(18,39,64,0.14); }
 .course-detail-video-frame { width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 12px; border: 1px solid #e1e8f0; margin-bottom: 1.5rem; background: #050b14; box-shadow: 0 10px 24px rgba(18,39,64,0.14); }
-.course-detail-video { display: block; width: 100%; height: 100%; object-fit: cover; background: #050b14; }
+.course-youtube-player { position: relative; }
+.course-youtube-play { position: relative; display: block; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.course-youtube-poster { display: block; width: 100%; height: 100%; object-fit: cover; background: #050b14; }
+.course-youtube-play-icon { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: linear-gradient(180deg, rgba(5,11,20,0.08) 0%, rgba(5,11,20,0.45) 100%); transition: background 0.2s ease; }
+.course-youtube-play-icon i { width: 64px; height: 64px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.92); color: var(--primary); font-size: 1.35rem; box-shadow: 0 12px 28px rgba(5,11,20,0.28); padding-left: 0.18rem; transition: transform 0.2s ease, background 0.2s ease; }
+.course-youtube-play:hover .course-youtube-play-icon { background: linear-gradient(180deg, rgba(5,11,20,0.12) 0%, rgba(5,11,20,0.55) 100%); }
+.course-youtube-play:hover .course-youtube-play-icon i { transform: scale(1.06); background: #ffffff; }
+.course-youtube-player.is-playing .course-youtube-play { display: none; }
+.course-youtube-iframe { display: block; width: 100%; height: 100%; border: 0; background: #050b14; }
 .course-detail-price { text-align: center; margin-bottom: 1.5rem; }
 .course-detail-price .price { font-family: var(--font-heading); font-size: 2.5rem; font-weight: 700; color: var(--primary); }
 .course-detail-price .price-note { font-size: 0.875rem; color: var(--gray-500); }

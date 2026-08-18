@@ -590,6 +590,46 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Inline YouTube player: thumbnail placeholder, plays embedded video on click
+    document.querySelectorAll('.course-youtube-player').forEach((player) => {
+        const videoId = player.dataset.youtubeId;
+        const playButton = player.querySelector('.course-youtube-play');
+        const poster = player.querySelector('.course-youtube-poster');
+
+        if (!videoId || !playButton) {
+            return;
+        }
+
+        if (poster) {
+            poster.addEventListener('error', function handlePosterError() {
+                const fallback = this.dataset.youtubeFallback;
+                if (fallback && this.src !== fallback) {
+                    this.src = fallback;
+                    return;
+                }
+
+                this.removeEventListener('error', handlePosterError);
+            });
+        }
+
+        playButton.addEventListener('click', () => {
+            if (player.classList.contains('is-playing')) {
+                return;
+            }
+
+            const iframe = document.createElement('iframe');
+            iframe.className = 'course-youtube-iframe';
+            iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?autoplay=1&rel=0&modestbranding=1`;
+            iframe.title = playButton.getAttribute('aria-label') || 'Course video';
+            iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+            iframe.allowFullscreen = true;
+            iframe.loading = 'lazy';
+
+            player.classList.add('is-playing');
+            player.appendChild(iframe);
+        });
+    });
+
     // Pre-fill course in contact form if URL has course parameter
     const urlParams = new URLSearchParams(window.location.search);
     const courseParam = urlParams.get('course');

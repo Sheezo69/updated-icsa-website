@@ -10,7 +10,6 @@
             @if ($isEdit)
                 @method('PUT')
             @endif
-            <input type="hidden" name="video_path" value="{{ old('video_path', $course['video_path'] ?? '') }}">
             <input type="hidden" name="video_thumbnail" value="{{ old('video_thumbnail', $course['video_thumbnail'] ?? '') }}">
 
             <div class="admin-field">
@@ -43,29 +42,23 @@
                 <input id="image" name="image" class="admin-input" value="{{ old('image', $course['image']) }}" placeholder="../images/detail-course.jpg">
             </div>
 
-            <div class="admin-field">
-                <label for="video_file">Course Video</label>
-                <input id="video_file" type="file" name="video_file" class="admin-input" accept="video/mp4,video/webm,video/ogg">
-                @if (! empty($course['video_path']))
-                    <p class="admin-note" style="margin-top: 0.5rem;">Current: {{ $course['video_path'] }}</p>
-                    <label class="admin-note" style="display: inline-flex; align-items: center; gap: 0.45rem; margin-top: 0.5rem;">
-                        <input type="checkbox" name="remove_video" value="1">
-                        Remove video
-                    </label>
-                @endif
+            <div class="admin-field admin-field-full">
+                <label for="youtube_url">YouTube Video URL</label>
+                <input id="youtube_url" name="youtube_url" class="admin-input" value="{{ old('youtube_url', $course['youtube_url'] ?? '') }}" placeholder="https://www.youtube.com/watch?v=...">
+                <p class="admin-note" style="margin-top: 0.5rem;">Paste a YouTube link. The video plays inline on the course page without leaving the site.</p>
             </div>
 
             <div class="admin-field">
-                <label for="video_thumbnail_file">Video Thumbnail</label>
+                <label for="video_thumbnail_file">Video Thumbnail (optional)</label>
                 <input id="video_thumbnail_file" type="file" name="video_thumbnail_file" class="admin-input" accept="image/jpeg,image/png,image/webp">
                 @if (! empty($course['video_thumbnail']))
                     <p class="admin-note" style="margin-top: 0.5rem;">Current: {{ $course['video_thumbnail'] }}</p>
                     <label class="admin-note" style="display: inline-flex; align-items: center; gap: 0.45rem; margin-top: 0.5rem;">
                         <input type="checkbox" name="remove_video_thumbnail" value="1">
-                        Remove thumbnail
+                        Remove custom thumbnail
                     </label>
                 @else
-                    <p class="admin-note" style="margin-top: 0.5rem;">If empty, the course image is used as the video poster.</p>
+                    <p class="admin-note" style="margin-top: 0.5rem;">If empty, the course image or YouTube preview image is used.</p>
                 @endif
             </div>
 
