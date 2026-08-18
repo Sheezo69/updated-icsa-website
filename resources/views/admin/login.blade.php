@@ -26,7 +26,7 @@
 
             @include('admin.partials.flash')
 
-            <form method="POST" action="{{ route('admin.login.submit') }}" class="admin-stack">
+            <form method="POST" action="{{ route('admin.login.submit', [], false) }}" class="admin-stack">
                 @csrf
 
                 <div class="admin-field">

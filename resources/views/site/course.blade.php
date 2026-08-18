@@ -5,14 +5,14 @@
 @php($showHeaderLogin = false)
 
 @section('content')
-    <section class="course-detail-hero">
+    <section class="course-detail-hero @if (! empty($course['background_image_url'])) has-course-background @endif" style="--course-background-darkness: {{ $course['background_darkness'] ?? 0 }}%; --course-background-blur: {{ $course['background_blur'] ?? 0 }}px;">
+        @if (! empty($course['background_image_url']))
+            <div class="course-detail-background-media" style="background-image: url('{{ $course['background_image_url'] }}');" aria-hidden="true"></div>
+            <div class="course-detail-background-overlay" aria-hidden="true"></div>
+        @endif
         <div class="container">
-            <div class="course-back-row">
-                <a href="{{ route('site.home') }}#courses" class="course-back-link"><i class="fas fa-arrow-left"></i> Back to Courses</a>
-            </div>
             <div class="course-detail-grid">
                 <div class="course-detail-content">
-                    <span class="hero-label">{{ $course['badge'] }}</span>
                     <h1>{{ $course['title'] }}</h1>
                     <div class="course-detail-meta">
                         @if ($course['duration'] !== '')
@@ -37,10 +37,14 @@
                     @elseif ($course['detail_image_url'])
                         <img src="{{ $course['detail_image_url'] }}" alt="{{ $course['title'] }}" class="course-detail-image" loading="lazy">
                     @endif
-                    <div class="course-detail-price">
-                        <div class="price">{{ $course['price'] }}</div>
-                        <div class="price-note">{{ $course['price_note'] }}</div>
-                    </div>
+                    @if ($course['price'] !== '' && strcasecmp($course['price'], 'Contact for Price') !== 0)
+                        <div class="course-detail-price">
+                            <div class="price">{{ $course['price'] }}</div>
+                            @if ($course['price_note'] !== '')
+                                <div class="price-note">{{ $course['price_note'] }}</div>
+                            @endif
+                        </div>
+                    @endif
                     @if (! empty($course['highlight_items']))
                         <div class="course-detail-features">
                             <h4>Program Highlights</h4>

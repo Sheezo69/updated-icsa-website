@@ -52,6 +52,9 @@ class CourseFileRepository
         preg_match_all('/<span class=["\']course-detail-meta-item["\']><i class=["\']fas fa-.*?["\']><\/i>\s*([^<]+)/is', $content, $metaMatches);
         preg_match('/<p class=["\']course-detail-description["\']>(.*?)<\/p>/is', $content, $descriptionMatch);
         preg_match('/<!--\s*course-image:\s*(.*?)\s*-->/is', $content, $imageCommentMatch);
+        preg_match('/<!--\s*course-background:\s*(.*?)\s*-->/is', $content, $backgroundCommentMatch);
+        preg_match('/<!--\s*course-background-darkness:\s*(.*?)\s*-->/is', $content, $backgroundDarknessMatch);
+        preg_match('/<!--\s*course-background-blur:\s*(.*?)\s*-->/is', $content, $backgroundBlurMatch);
         preg_match('/<img src=["\']([^"\']+)["\'].*?class=["\']course-detail-image["\']/is', $content, $imageMatch);
         preg_match('/<!--\s*course-youtube:\s*(.*?)\s*-->/is', $content, $youtubeCommentMatch);
         preg_match('/<!--\s*course-video:\s*(.*?)\s*-->/is', $content, $videoCommentMatch);
@@ -79,13 +82,16 @@ class CourseFileRepository
             'diploma_type' => $this->cleanText($meta[2] ?? ''),
             'description' => $this->cleanText($descriptionMatch[1] ?? ''),
             'image' => trim((string) ($imageCommentMatch[1] ?? $imageMatch[1] ?? '')),
+            'background_image' => trim((string) ($backgroundCommentMatch[1] ?? '')),
+            'background_darkness' => max(0, min(100, (int) ($backgroundDarknessMatch[1] ?? 0))),
+            'background_blur' => max(0, min(20, (int) ($backgroundBlurMatch[1] ?? 0))),
             'youtube_url' => $this->resolveYoutubeUrl(
                 trim((string) ($youtubeCommentMatch[1] ?? '')),
                 trim((string) ($videoCommentMatch[1] ?? $videoMatch[1] ?? '')),
                 trim((string) ($youtubeIdMatch[1] ?? '')),
             ),
             'video_thumbnail' => trim((string) ($videoThumbnailCommentMatch[1] ?? $youtubePosterMatch[1] ?? $videoPosterMatch[1] ?? '')),
-            'price' => $this->cleanText($priceMatch[1] ?? 'Contact for Price'),
+            'price' => $this->cleanText($priceMatch[1] ?? ''),
             'price_note' => $this->cleanText($priceNoteMatch[1] ?? 'Flexible payment options available'),
             'highlights' => $this->htmlToPlain($highlightsMatch[1] ?? ''),
             'overview' => $this->cleanText($overviewMatch[1] ?? ''),
@@ -200,10 +206,13 @@ class CourseFileRepository
             'DIPLOMA_TYPE' => e((string) ($input['diploma_type'] ?? '')),
             'DESCRIPTION' => e((string) ($input['description'] ?? '')),
             'IMAGE' => e((string) ($input['image'] ?? '')),
+            'BACKGROUND_IMAGE' => e((string) ($input['background_image'] ?? '')),
+            'BACKGROUND_DARKNESS' => (string) max(0, min(100, (int) ($input['background_darkness'] ?? 0))),
+            'BACKGROUND_BLUR' => (string) max(0, min(20, (int) ($input['background_blur'] ?? 0))),
             'YOUTUBE_URL' => e((string) ($input['youtube_url'] ?? '')),
             'VIDEO_THUMBNAIL' => e((string) ($input['video_thumbnail'] ?? '')),
             'COURSE_MEDIA' => $this->courseMediaHtml($input),
-            'PRICE' => e((string) ($input['price'] ?? 'Contact for Price')),
+            'PRICE' => e((string) ($input['price'] ?? '')),
             'PRICE_NOTE' => e((string) ($input['price_note'] ?? 'Flexible payment options available')),
             'HIGHLIGHTS' => $this->plainToList((string) ($input['highlights'] ?? '')),
             'OVERVIEW' => e((string) ($input['overview'] ?? '')),
@@ -291,17 +300,16 @@ class CourseFileRepository
 <body>
     {{HEADER}}
     <!-- course-image: {{IMAGE}} -->
+    <!-- course-background: {{BACKGROUND_IMAGE}} -->
+    <!-- course-background-darkness: {{BACKGROUND_DARKNESS}} -->
+    <!-- course-background-blur: {{BACKGROUND_BLUR}} -->
     <!-- course-youtube: {{YOUTUBE_URL}} -->
     <!-- course-video-thumbnail: {{VIDEO_THUMBNAIL}} -->
 
     <section class="course-detail-hero">
         <div class="container">
-            <div class="course-back-row">
-                <a href="../courses.html" class="course-back-link"><i class="fas fa-arrow-left"></i> Back to Courses</a>
-            </div>
             <div class="course-detail-grid">
                 <div class="course-detail-content">
-                    <span class="hero-label">{{BADGE}}</span>
                     <h1>{{TITLE}}</h1>
                     <div class="course-detail-meta">
                         <span class="course-detail-meta-item"><i class="fas fa-clock"></i> {{DURATION}}</span>
