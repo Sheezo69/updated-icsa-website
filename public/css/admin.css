@@ -494,6 +494,50 @@ a {
     font-size: 0.9rem;
 }
 
+.admin-media-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(245px, 1fr));
+    gap: 1rem;
+}
+
+.admin-media-card {
+    overflow: hidden;
+    border: 1px solid var(--admin-border);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.admin-media-preview {
+    display: block;
+    width: 100%;
+    height: 170px;
+    object-fit: cover;
+    background: #0b1220;
+}
+
+.admin-media-card-body {
+    display: grid;
+    gap: 0.55rem;
+    padding: 0.85rem;
+}
+
+.admin-media-card-body strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-media-actions,
+.admin-media-rename {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.admin-media-rename { flex: 1; }
+.admin-media-rename .admin-input { min-width: 0; flex: 1; }
+
 @media (min-width: 1101px) {
     .admin-main { max-width: 1680px; width: 100%; margin: 0 auto; }
 }

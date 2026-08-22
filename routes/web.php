@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\CourseController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\InquiryController;
+use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Api\FormController;
@@ -69,6 +70,11 @@ Route::prefix($adminPrefix)->group(function (): void {
         Route::post('/courses', [CourseController::class, 'store'])->name('admin.courses.store');
         Route::put('/courses/{slug}', [CourseController::class, 'update'])->name('admin.courses.update');
         Route::delete('/courses/{slug}', [CourseController::class, 'destroy'])->name('admin.courses.destroy');
+
+        Route::get('/media', [MediaController::class, 'index'])->name('admin.media.index');
+        Route::post('/media', [MediaController::class, 'store'])->name('admin.media.store');
+        Route::post('/media/rename', [MediaController::class, 'rename'])->name('admin.media.rename');
+        Route::delete('/media', [MediaController::class, 'destroy'])->name('admin.media.destroy');
 
         Route::get('/settings', [SettingsController::class, 'edit'])->name('admin.settings.edit');
         Route::get('/settings.php', fn () => redirect()->route('admin.settings.edit'));

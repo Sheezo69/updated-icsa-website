@@ -141,6 +141,38 @@ class CourseFileRepository
         return File::delete($path);
     }
 
+    public function mediaUsage(string $mediaPath): array
+    {
+        $usage = [];
+
+        foreach (File::glob($this->directory().'/*.html') as $file) {
+            $content = File::get($file);
+            if (! str_contains($content, $mediaPath)) {
+                continue;
+            }
+
+            $course = $this->find(pathinfo($file, PATHINFO_FILENAME));
+            if ($course) {
+                $usage[] = [
+                    'slug' => $course['slug'],
+                    'title' => $course['title'],
+                ];
+            }
+        }
+
+        return $usage;
+    }
+
+    public function replaceMediaPath(string $oldPath, string $newPath): void
+    {
+        foreach (File::glob($this->directory().'/*.html') as $file) {
+            $content = File::get($file);
+            if (str_contains($content, $oldPath)) {
+                File::put($file, str_replace($oldPath, $newPath, $content));
+            }
+        }
+    }
+
     public function path(string $slug): string
     {
         return $this->directory().'/'.$this->normalizeSlug($slug).'.html';

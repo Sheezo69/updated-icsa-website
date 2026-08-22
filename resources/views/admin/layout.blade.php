@@ -31,6 +31,9 @@
                 <a href="{{ route('admin.courses.index') }}" class="admin-sidebar-link {{ request()->routeIs('admin.courses.*') ? 'is-active' : '' }}">
                     <i class="fas fa-graduation-cap"></i> Courses
                 </a>
+                <a href="{{ route('admin.media.index') }}" class="admin-sidebar-link {{ request()->routeIs('admin.media.*') ? 'is-active' : '' }}">
+                    <i class="fas fa-images"></i> Media Library
+                </a>
                 @if (($currentAdmin ?? null)?->isOwner())
                     <a href="{{ route('admin.users.index') }}" class="admin-sidebar-link {{ request()->routeIs('admin.users.*') ? 'is-active' : '' }}">
                         <i class="fas fa-users"></i> Users

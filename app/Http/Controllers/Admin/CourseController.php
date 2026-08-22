@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Support\CourseFileRepository;
+use App\Support\MediaLibrary;
 use App\Support\YoutubeVideo;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -36,15 +37,16 @@ class CourseController extends Controller
         ]);
     }
 
-    public function create(): View
+    public function create(MediaLibrary $media): View
     {
         return view('admin.courses.edit', [
             'course' => $this->blankCourse(),
             'isEdit' => false,
+            'backgroundMedia' => $media->all('course-backgrounds'),
         ]);
     }
 
-    public function edit(string $slug, CourseFileRepository $courses): View
+    public function edit(string $slug, CourseFileRepository $courses, MediaLibrary $media): View
     {
         $course = $courses->find($slug);
         abort_if($course === null, 404);
@@ -52,6 +54,7 @@ class CourseController extends Controller
         return view('admin.courses.edit', [
             'course' => $course,
             'isEdit' => true,
+            'backgroundMedia' => $media->all('course-backgrounds'),
         ]);
     }
 
