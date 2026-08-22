@@ -20,10 +20,10 @@
     <section class="course-filter">
         <div class="container">
             <div class="filter-buttons">
-                <button class="filter-btn active" data-filter="all">All Courses</button>
-                <button class="filter-btn" data-filter="it">IT & Technical</button>
-                <button class="filter-btn" data-filter="diploma">UK Diploma Programs</button>
-                <button class="filter-btn" data-filter="language">Language & Professional</button>
+                <button type="button" class="filter-btn active" data-filter="all" aria-pressed="true">All Courses</button>
+                <button type="button" class="filter-btn" data-filter="it" aria-pressed="false">IT & Technical</button>
+                <button type="button" class="filter-btn" data-filter="diploma" aria-pressed="false">UK Diploma Programs</button>
+                <button type="button" class="filter-btn" data-filter="language" aria-pressed="false">Language & Professional</button>
             </div>
         </div>
     </section>
@@ -78,7 +78,7 @@
                 <h2>Can't Find What You're Looking For?</h2>
                 <p>Contact us to learn more about our courses and find the perfect program for your career goals.</p>
                 <div class="cta-buttons">
-                    <a href="{{ route('site.home') }}#contact" class="btn btn-secondary btn-lg">Contact Us</a>
+                    <a href="{{ route('site.contact') }}" class="btn btn-secondary btn-lg">Contact Us</a>
                     <a href="https://wa.me/96597674076" class="btn btn-outline btn-lg" style="border-color: var(--primary-dark); color: var(--primary-dark);" target="_blank" rel="noopener">
                         <i class="fab fa-whatsapp"></i> WhatsApp
                     </a>

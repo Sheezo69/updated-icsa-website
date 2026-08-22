@@ -481,6 +481,13 @@ a {
     gap: 1rem;
 }
 
+.admin-inquiry-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
 .admin-note {
     margin: 0;
     color: var(--admin-muted);

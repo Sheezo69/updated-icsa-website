@@ -15,7 +15,7 @@
                 <a href="{{ route('site.home') }}#home" class="nav-link {{ request()->routeIs('site.home') ? 'active' : '' }}">Home</a>
                 <a href="{{ route('site.home') }}#about" class="nav-link">About Us</a>
                 <a href="{{ route('site.home') }}#courses" class="nav-link {{ request()->routeIs('site.course') ? 'active' : '' }}">Courses</a>
-                <a href="{{ route('site.home') }}#contact" class="nav-link">Contact</a>
+                <a href="{{ route('site.contact') }}" class="nav-link">Contact</a>
             </nav>
 
             <div class="header-actions">

@@ -86,19 +86,19 @@
                         </td>
                         <td>{{ optional($inquiry->created_at)->format('M d, Y H:i') }}</td>
                         <td>
-                            <div class="admin-stack">
-                                <form method="POST" action="{{ route('admin.inquiries.update', $inquiry) }}" class="admin-inline-actions">
+                            <div class="admin-inquiry-actions" style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: nowrap; width: 100%;">
+                                <form method="POST" action="{{ route('admin.inquiries.update', $inquiry) }}" class="admin-inline-actions" style="display: flex; align-items: center; gap: 0.6rem; flex: 1 1 auto; min-width: 0; flex-wrap: nowrap; margin: 0;">
                                     @csrf
                                     @method('PATCH')
-                                    <select name="status" class="admin-select" style="min-width: 150px;">
+                                    <select name="status" class="admin-select" style="min-width: 0; flex: 1 1 220px;">
                                         @foreach (['new' => 'New', 'in_progress' => 'In Progress', 'resolved' => 'Resolved', 'archived' => 'Archived'] as $value => $label)
                                             <option value="{{ $value }}" @selected($inquiry->status === $value)>{{ $label }}</option>
                                         @endforeach
                                     </select>
-                                    <button type="submit" class="admin-btn admin-btn-secondary">Save</button>
+                                    <button type="submit" class="admin-btn admin-btn-secondary" style="flex: 0 0 auto;">Save</button>
                                 </form>
 
-                                <form method="POST" action="{{ route('admin.inquiries.destroy', $inquiry) }}" onsubmit="return confirm('Delete this inquiry?');">
+                                <form method="POST" action="{{ route('admin.inquiries.destroy', $inquiry) }}" style="margin: 0; display: inline-flex;" onsubmit="return confirm('Delete this inquiry?');">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="admin-btn admin-btn-danger">Delete</button>

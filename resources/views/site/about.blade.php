@@ -239,7 +239,7 @@
                 <p>Join thousands of successful graduates who have transformed their careers with ICSA.</p>
                 <div class="cta-buttons">
                     <a href="{{ route('site.home') }}#courses" class="btn btn-secondary btn-lg">Explore Courses</a>
-                    <a href="{{ route('site.home') }}#contact" class="btn btn-outline btn-lg" style="border-color: var(--primary-dark); color: var(--primary-dark);">Contact Us</a>
+                    <a href="{{ route('site.contact') }}" class="btn btn-outline btn-lg" style="border-color: var(--primary-dark); color: var(--primary-dark);">Contact Us</a>
                 </div>
             </div>
         </div>

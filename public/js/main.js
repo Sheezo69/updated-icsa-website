@@ -396,22 +396,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Course Filter on Courses Page
     const filterBtns = document.querySelectorAll('.filter-btn');
-    const courseCards = document.querySelectorAll('.course-card');
+    const courseCards = document.querySelectorAll('.courses-grid .course-card');
 
     if (filterBtns.length > 0) {
         const applyCourseFilter = (filter) => {
             // Remove active from all buttons
-            filterBtns.forEach(b => b.classList.remove('active'));
+            filterBtns.forEach(b => {
+                b.classList.remove('active');
+                b.setAttribute('aria-pressed', 'false');
+            });
 
             // Activate matching button if found
             const activeBtn = Array.from(filterBtns).find(b => b.dataset.filter === filter) || filterBtns[0];
             activeBtn.classList.add('active');
+            activeBtn.setAttribute('aria-pressed', 'true');
 
             const activeFilter = activeBtn.dataset.filter;
 
             courseCards.forEach(card => {
                 if (activeFilter === 'all' || card.dataset.category === activeFilter) {
-                    card.style.display = 'block';
+                    card.style.display = '';
                     card.style.animation = 'fadeInUp 0.5s ease-out';
                 } else {
                     card.style.display = 'none';
@@ -683,8 +687,9 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
-    const contactForm = document.getElementById('contactForm');
-    if (contactForm && !contactForm.dataset.bound) {
+    apiForms.forEach((contactForm) => {
+        if (contactForm.dataset.bound) return;
+
         contactForm.dataset.bound = 'true';
         const submitButton = contactForm.querySelector('button[type="submit"]');
         const defaultButtonHtml = submitButton ? submitButton.innerHTML : '';
@@ -719,8 +724,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 setSubmitting(true);
                 await window.attachFormSecurity(formData, contactForm);
                 await window.submitApiForm(endpoint, formData);
-                showSitePopup('Thank you for your message! We will get back to you soon.', 'success');
-                contactForm.reset();
+                window.location.assign(window.resolveAppPath(''));
             } catch (error) {
                 const message = window.getFriendlySubmitError(error);
                 showSitePopup(message, 'error');
@@ -728,7 +732,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 setSubmitting(false);
             }
         });
-    }
+    });
 
     console.log('ICSA Website loaded successfully!');
 
@@ -753,15 +757,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Course pages: fill "Interested in" heading with current course title
-    const courseTitle = document.querySelector('.course-detail-content h1');
-    const inquiryHeading = document.querySelector('.inquiry-info h2');
-    if (courseTitle && inquiryHeading) {
-        const title = courseTitle.textContent.trim();
-        if (title) {
-            inquiryHeading.textContent = `Interested in ${title}?`;
-        }
-    }
 });
 
 // Toast notification function

@@ -17,7 +17,7 @@
 
     @include('site.partials.footer')
 
-    <script src="{{ asset('js/main.js') }}"></script>
+    <script src="{{ asset('js/main.js') }}?v=3"></script>
     @stack('scripts')
 </body>
 </html>

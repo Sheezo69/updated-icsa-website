@@ -10,7 +10,7 @@
                             <li><a href="{{ route('site.home') }}#home">Home</a></li>
                             <li><a href="{{ route('site.home') }}#about">About Us</a></li>
                             <li><a href="{{ route('site.home') }}#courses">Courses</a></li>
-                            <li><a href="{{ route('site.home') }}#contact">Contact</a></li>
+                            <li><a href="{{ route('site.contact') }}">Contact</a></li>
                         </ul>
                     </div>
 

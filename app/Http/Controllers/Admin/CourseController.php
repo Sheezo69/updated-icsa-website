@@ -8,8 +8,11 @@ use App\Support\YoutubeVideo;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class CourseController extends Controller
 {
@@ -161,8 +164,10 @@ class CourseController extends Controller
         }
 
         if ($request->hasFile('video_thumbnail_file')) {
-            $this->deletePublicMedia($data['video_thumbnail'] ?? '');
-            $data['video_thumbnail'] = $this->storePublicMedia($request->file('video_thumbnail_file'), 'course-video-thumbnails', $slug);
+            $oldPath = $data['video_thumbnail'] ?? '';
+            $newPath = $this->storePublicMedia($request->file('video_thumbnail_file'), 'course-video-thumbnails', $slug);
+            $this->deletePublicMedia($oldPath);
+            $data['video_thumbnail'] = $newPath;
         }
 
         if ($request->boolean('remove_background_image')) {
@@ -171,8 +176,10 @@ class CourseController extends Controller
         }
 
         if ($request->hasFile('background_image_file')) {
-            $this->deletePublicMedia($data['background_image'] ?? '');
-            $data['background_image'] = $this->storePublicMedia($request->file('background_image_file'), 'course-backgrounds', $slug);
+            $oldPath = $data['background_image'] ?? '';
+            $newPath = $this->storePublicMedia($request->file('background_image_file'), 'course-backgrounds', $slug);
+            $this->deletePublicMedia($oldPath);
+            $data['background_image'] = $newPath;
         }
 
         $data['background_darkness'] = (int) ($data['background_darkness'] ?? 0);
@@ -190,7 +197,24 @@ class CourseController extends Controller
     {
         $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension());
         $filename = $slug.'-'.Str::random(8).'.'.$extension;
-        $path = $file->storeAs($directory, $filename, 'public');
+        $directoryPath = storage_path('app/public/'.$directory);
+
+        try {
+            File::ensureDirectoryExists($directoryPath, 0755, true);
+            $path = $file->storeAs($directory, $filename, 'public');
+        } catch (Throwable $exception) {
+            report($exception);
+
+            throw ValidationException::withMessages([
+                'background_image_file' => 'The image could not be saved. Check storage permissions and try again.',
+            ]);
+        }
+
+        if (! is_string($path) || $path === '') {
+            throw ValidationException::withMessages([
+                'background_image_file' => 'The image could not be saved. Check storage permissions and try again.',
+            ]);
+        }
 
         return '/storage/'.$path;
     }

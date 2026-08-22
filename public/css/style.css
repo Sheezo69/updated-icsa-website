@@ -987,7 +987,7 @@ ul {
 .course-detail-meta { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.5rem; }
 .course-detail-meta-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.48rem 0.86rem; border-radius: 999px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); backdrop-filter: blur(4px); font-size: 0.9375rem; color: #f2f6fb; }
 .course-detail-meta-item i { color: var(--accent); }
-.course-detail-description { font-size: 1.0625rem; color: #dce7f5; line-height: 1.8; max-width: 60ch; }
+.course-detail-description { max-width: 60ch; margin: 0; padding: 1rem 1.2rem; border: 1px solid rgba(255,255,255,0.2); border-radius: 14px; background: rgba(3,13,28,0.62); box-shadow: 0 10px 24px rgba(0,0,0,0.16); backdrop-filter: blur(6px); font-size: 1.0625rem; color: #dce7f5; line-height: 1.8; }
 
 .course-hero-details { margin-top: 1.6rem; display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 1rem; }
 .course-hero-detail-card { position: relative; background: rgba(255,255,255,0.95); border: 1px solid rgba(255,255,255,0.68); border-radius: 14px; padding: 1rem 1.05rem; box-shadow: 0 10px 26px rgba(8,23,41,0.22); transition: transform 0.22s ease, box-shadow 0.22s ease; }
@@ -1082,7 +1082,11 @@ ul {
 
 .inquiry-info { background: #ffffff; border: 1px solid #e0e8f2; border-radius: 18px; padding: 2rem; box-shadow: 0 14px 28px rgba(15,35,62,0.08); }
 .inquiry-info h2 { font-size: 2rem; color: var(--primary); margin-bottom: 1rem; }
+.inquiry-info .course-learning-title { font-size: 2rem; color: var(--primary); margin: 0 0 1rem; }
 .inquiry-info p { font-size: 1rem; color: var(--gray-600); margin-bottom: 2rem; }
+.course-inquiry-outcomes { display: grid; gap: 0.9rem; margin: 1.25rem 0 0; padding: 0; list-style: none; }
+.course-inquiry-outcomes li { display: flex; align-items: flex-start; gap: 1rem; color: var(--gray-700); font-size: 1rem; line-height: 1.55; }
+.course-inquiry-outcomes li i { flex: 0 0 auto; margin-top: 0.25rem; color: #0ab274; }
 .contact-methods { display: flex; flex-direction: column; gap: 1.5rem; }
 .contact-method { display: flex; gap: 1rem; padding: 0.7rem 0.75rem; border-radius: 12px; transition: background-color 0.2s ease, transform 0.2s ease; }
 .contact-method:hover { background: #f5f8fd; transform: translateX(3px); }
