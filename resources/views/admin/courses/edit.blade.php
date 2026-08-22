@@ -79,17 +79,7 @@
                     </div>
 
                     <div class="admin-background-controls">
-                        <div id="background-preview" class="admin-background-preview" style="background-image: {{ !empty($course['background_image']) ? "url('".e(asset(ltrim($course['background_image'], '/')))."')" : 'none' }}; background-position: {{ old('background_position_x', $course['background_position_x'] ?? 50) }}% {{ old('background_position_y', $course['background_position_y'] ?? 50) }}%;" title="Drag to reposition the background">
-                            <span>Preview · drag image to reposition</span>
-                        </div>
-                        <div class="admin-range-row">
-                            <div class="admin-range-label"><label for="background_position_x_range">Horizontal position</label><output id="background_position_x_output">{{ old('background_position_x', $course['background_position_x'] ?? 50) }}%</output></div>
-                            <input id="background_position_x_range" type="range" min="0" max="100" value="{{ old('background_position_x', $course['background_position_x'] ?? 50) }}">
-                        </div>
-                        <div class="admin-range-row">
-                            <div class="admin-range-label"><label for="background_position_y_range">Vertical position</label><output id="background_position_y_output">{{ old('background_position_y', $course['background_position_y'] ?? 50) }}%</output></div>
-                            <input id="background_position_y_range" type="range" min="0" max="100" value="{{ old('background_position_y', $course['background_position_y'] ?? 50) }}">
-                        </div>
+                        <p class="admin-note">Use <strong>Preview Unsaved Course</strong> below to view the complete course page and drag the hero image into position.</p>
                         <div class="admin-range-row">
                             <div class="admin-range-label"><label for="background_darkness">Darkness</label><output>{{ old('background_darkness', $course['background_darkness'] ?? 0) }}%</output></div>
                             <input id="background_darkness" type="range" name="background_darkness" min="0" max="100" step="1" value="{{ old('background_darkness', $course['background_darkness'] ?? 0) }}" oninput="this.previousElementSibling.querySelector('output').value = this.value + '%'">
@@ -177,65 +167,6 @@
 @push('scripts')
 <script>
 (() => {
-    const preview = document.getElementById('background-preview');
-    const fileInput = document.getElementById('background_image_file');
-    const library = document.getElementById('background_image_library');
-    const xInput = document.querySelector('[name="background_position_x"]');
-    const yInput = document.querySelector('[name="background_position_y"]');
-    const xRange = document.getElementById('background_position_x_range');
-    const yRange = document.getElementById('background_position_y_range');
-    if (!preview || !xInput || !yInput) return;
-
-    const updatePosition = (x, y) => {
-        x = Math.max(0, Math.min(100, Math.round(x)));
-        y = Math.max(0, Math.min(100, Math.round(y)));
-        xInput.value = x;
-        yInput.value = y;
-        xRange.value = x;
-        yRange.value = y;
-        document.getElementById('background_position_x_output').textContent = x + '%';
-        document.getElementById('background_position_y_output').textContent = y + '%';
-        preview.style.backgroundPosition = x + '% ' + y + '%';
-    };
-
-    const setPreviewImage = (url) => {
-        preview.style.backgroundImage = url ? "url('" + url.replaceAll("'", "%27") + "')" : 'none';
-        preview.querySelector('span').style.display = url ? 'none' : 'block';
-    };
-
-    xRange.addEventListener('input', () => updatePosition(xRange.value, yInput.value));
-    yRange.addEventListener('input', () => updatePosition(xInput.value, yRange.value));
-    library?.addEventListener('change', () => {
-        document.querySelector('[name="background_image"]').value = library.value;
-        setPreviewImage(library.value ? '{{ asset('') }}' + library.value.replace(/^\//, '') : '');
-    });
-    fileInput?.addEventListener('change', () => {
-        const file = fileInput.files?.[0];
-        if (file) setPreviewImage(URL.createObjectURL(file));
-    });
-
-    let dragging = false;
-    let startX = 0;
-    let startY = 0;
-    let originX = 50;
-    let originY = 50;
-    preview.addEventListener('pointerdown', (event) => {
-        dragging = true;
-        preview.setPointerCapture(event.pointerId);
-        startX = event.clientX;
-        startY = event.clientY;
-        originX = Number(xInput.value);
-        originY = Number(yInput.value);
-    });
-    preview.addEventListener('pointermove', (event) => {
-        if (!dragging) return;
-        updatePosition(originX + (event.clientX - startX) / preview.clientWidth * 100, originY + (event.clientY - startY) / preview.clientHeight * 100);
-    });
-    preview.addEventListener('pointerup', () => dragging = false);
-    preview.addEventListener('pointercancel', () => dragging = false);
-})();
-
-(() => {
     const button = document.getElementById('course-live-preview');
     const form = button?.closest('form');
     if (!button || !form) return;
@@ -286,6 +217,40 @@
             </section><section class="course-content-section"><div class="container"><div class="course-content-grid">${section('Program Overview', value('overview'))}${section('What You Will Learn', value('learning_outcomes'), true)}${section('Who Should Enroll', value('target_audience'), true)}${section('Career Opportunities', value('careers'), true)}</div></div></section>
         </body></html>`);
         preview.document.close();
+        preview.addEventListener('load', () => {
+            const background = preview.document.querySelector('.course-detail-background-media');
+            if (!background) return;
+            let dragging = false;
+            let startX = 0;
+            let startY = 0;
+            let originX = Number(positionX);
+            let originY = Number(positionY);
+            const update = (x, y) => {
+                x = Math.max(0, Math.min(100, Math.round(x)));
+                y = Math.max(0, Math.min(100, Math.round(y)));
+                background.style.backgroundPosition = x + '% ' + y + '%';
+                preview.opener?.postMessage({ type: 'course-background-position', x, y }, location.origin);
+            };
+            background.addEventListener('pointerdown', (event) => {
+                dragging = true;
+                background.setPointerCapture(event.pointerId);
+                startX = event.clientX;
+                startY = event.clientY;
+                originX = Number(positionX);
+                originY = Number(positionY);
+            });
+            background.addEventListener('pointermove', (event) => {
+                if (dragging) update(originX + (event.clientX - startX) / background.clientWidth * 100, originY + (event.clientY - startY) / background.clientHeight * 100);
+            });
+            background.addEventListener('pointerup', () => dragging = false);
+            background.addEventListener('pointercancel', () => dragging = false);
+        });
+    });
+
+    window.addEventListener('message', (event) => {
+        if (event.origin !== location.origin || event.data?.type !== 'course-background-position') return;
+        document.querySelector('[name="background_position_x"]').value = event.data.x;
+        document.querySelector('[name="background_position_y"]').value = event.data.y;
     });
 })();
 </script>
