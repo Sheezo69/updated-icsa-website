@@ -164,6 +164,7 @@
 
             <div class="admin-actions admin-field-full">
                 <button type="submit" class="admin-btn admin-btn-primary">{{ $isEdit ? 'Update Course' : 'Create Course' }}</button>
+                <button type="button" id="course-live-preview" class="admin-btn admin-btn-secondary"><i class="fas fa-eye"></i> Preview Unsaved Course</button>
                 <a href="{{ route('admin.courses.index') }}" class="admin-btn admin-btn-secondary">Back</a>
                 @if ($isEdit)
                     <a href="{{ url('/courses/'.$course['slug'].'.html') }}" target="_blank" class="admin-btn admin-btn-secondary">Preview</a>
@@ -232,6 +233,60 @@
     });
     preview.addEventListener('pointerup', () => dragging = false);
     preview.addEventListener('pointercancel', () => dragging = false);
+})();
+
+(() => {
+    const button = document.getElementById('course-live-preview');
+    const form = button?.closest('form');
+    if (!button || !form) return;
+
+    const escapeHtml = (value) => String(value ?? '').replace(/[&<>\"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[char]));
+    const lines = (value) => String(value ?? '').split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+    const pathUrl = (value) => {
+        value = String(value ?? '').trim();
+        if (!value) return '';
+        if (/^https?:\/\//i.test(value) || value.startsWith('/')) return value;
+        return '/' + value.replace(/^\.\.\//, '').replace(/^\//, '');
+    };
+
+    button.addEventListener('click', () => {
+        const data = new FormData(form);
+        const value = (name) => data.get(name) || '';
+        const selectedFile = document.getElementById('background_image_file')?.files?.[0];
+        const backgroundUrl = selectedFile
+            ? URL.createObjectURL(selectedFile)
+            : pathUrl(value('background_image'));
+        const imageUrl = pathUrl(value('image'));
+        const positionX = value('background_position_x') || 50;
+        const positionY = value('background_position_y') || 50;
+        const darkness = value('background_darkness') || 0;
+        const blur = value('background_blur') || 0;
+        const title = escapeHtml(value('title') || 'Course Preview');
+        const preview = window.open('', '_blank');
+        if (!preview) return;
+
+        const meta = [value('duration'), value('certification'), value('diploma_type')]
+            .filter(Boolean).map((item) => `<span class="course-detail-meta-item"><i class="fas fa-circle-check"></i> ${escapeHtml(item)}</span>`).join('');
+        const list = (text) => lines(text).map((item) => `<li><i class="fas fa-check"></i> ${escapeHtml(item)}</li>`).join('');
+        const section = (heading, text, listMode = false) => {
+            if (!String(text).trim()) return '';
+            return `<article class="tab-panel course-block"><h3>${heading}</h3>${listMode ? `<ul>${list(text)}</ul>` : `<p>${escapeHtml(text)}</p>`}</article>`;
+        };
+        const backgroundStyle = backgroundUrl
+            ? `background-image:url('${backgroundUrl.replaceAll("'", '%27')}');background-position:${positionX}% ${positionY}%;filter:blur(${blur}px);`
+            : '';
+        const darknessOverlay = backgroundUrl ? `<div class="course-detail-background-overlay" style="background:rgba(0,0,0,${Number(darkness) / 100});"></div>` : '';
+        const heroClass = backgroundUrl ? ' has-course-background' : '';
+
+        preview.document.write(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} | Preview</title><link rel="stylesheet" href="{{ asset('css/style.css') }}"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></head><body>
+            <div style="position:sticky;top:0;z-index:20;padding:.75rem 1rem;background:#081a33;color:#fff;text-align:center;font-weight:700;">UNSAVED COURSE PREVIEW — close this tab to return to editing</div>
+            <section class="course-detail-hero${heroClass}">
+                ${backgroundUrl ? `<div class="course-detail-background-media" style="${backgroundStyle}"></div>${darknessOverlay}` : ''}
+                <div class="container"><div class="course-detail-grid"><div class="course-detail-content"><h1>${title}</h1><div class="course-detail-meta">${meta}</div><p class="course-detail-description">${escapeHtml(value('description'))}</p></div><aside class="course-detail-card">${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="${title}" class="course-detail-image">` : ''}${value('price') ? `<div class="course-detail-price"><div class="price">${escapeHtml(value('price'))}</div><div class="price-note">${escapeHtml(value('price_note'))}</div></div>` : ''}${value('highlights') ? `<div class="course-detail-features"><h4>Program Highlights</h4><ul>${list(value('highlights'))}</ul></div>` : ''}<a class="btn btn-primary" href="#">Enroll Now</a></aside></div></div>
+            </section><section class="course-content-section"><div class="container"><div class="course-content-grid">${section('Program Overview', value('overview'))}${section('What You Will Learn', value('learning_outcomes'), true)}${section('Who Should Enroll', value('target_audience'), true)}${section('Career Opportunities', value('careers'), true)}</div></div></section>
+        </body></html>`);
+        preview.document.close();
+    });
 })();
 </script>
 @endpush
