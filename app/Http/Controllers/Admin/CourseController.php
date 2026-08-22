@@ -108,8 +108,6 @@ class CourseController extends Controller
             'remove_background_image' => ['nullable', 'boolean'],
             'background_darkness' => ['nullable', 'integer', 'min:0', 'max:100'],
             'background_blur' => ['nullable', 'integer', 'min:0', 'max:20'],
-            'background_position_x' => ['nullable', 'integer', 'min:0', 'max:100'],
-            'background_position_y' => ['nullable', 'integer', 'min:0', 'max:100'],
             'youtube_url' => [
                 'nullable',
                 'string',
@@ -147,8 +145,6 @@ class CourseController extends Controller
             'background_image' => '',
             'background_darkness' => 0,
             'background_blur' => 0,
-            'background_position_x' => 50,
-            'background_position_y' => 50,
             'youtube_url' => '',
             'video_thumbnail' => '',
             'price' => '',
@@ -191,8 +187,6 @@ class CourseController extends Controller
 
         $data['background_darkness'] = (int) ($data['background_darkness'] ?? 0);
         $data['background_blur'] = (int) ($data['background_blur'] ?? 0);
-        $data['background_position_x'] = (int) ($data['background_position_x'] ?? 50);
-        $data['background_position_y'] = (int) ($data['background_position_y'] ?? 50);
 
         unset(
             $data['video_thumbnail_file'],

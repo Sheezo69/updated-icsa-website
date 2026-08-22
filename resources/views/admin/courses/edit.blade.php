@@ -12,8 +12,6 @@
             @endif
             <input type="hidden" name="video_thumbnail" value="{{ old('video_thumbnail', $course['video_thumbnail'] ?? '') }}">
             <input type="hidden" name="background_image" value="{{ old('background_image', $course['background_image'] ?? '') }}">
-            <input type="hidden" name="background_position_x" value="{{ old('background_position_x', $course['background_position_x'] ?? 50) }}">
-            <input type="hidden" name="background_position_y" value="{{ old('background_position_y', $course['background_position_y'] ?? 50) }}">
 
             <div class="admin-field">
                 <label for="title">Title</label>

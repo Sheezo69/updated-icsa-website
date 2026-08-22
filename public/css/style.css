@@ -973,7 +973,7 @@ ul {
 .course-detail-hero { position: relative; overflow: hidden; background: linear-gradient(135deg, #081a33 0%, #041225 100%); background-position: center; background-size: cover; padding: 4rem 0; color: var(--white); }
 .course-detail-hero.has-course-background { background: #111827; }
 .course-detail-background-media, .course-detail-background-overlay { position: absolute; inset: 0; width: 100%; height: 100%; }
-.course-detail-background-media { z-index: 0; background-position: var(--course-background-position-x, 50%) var(--course-background-position-y, 50%); background-size: cover; background-repeat: no-repeat; object-fit: cover; filter: blur(var(--course-background-blur, 0px)); transform: scale(1.04); }
+.course-detail-background-media { z-index: 0; background-position: center; background-size: cover; background-repeat: no-repeat; object-fit: cover; filter: blur(var(--course-background-blur, 0px)); transform: scale(1.04); }
 .course-detail-background-overlay { z-index: 0; background: rgba(0, 0, 0, calc(var(--course-background-darkness, 0%) / 100)); pointer-events: none; }
 .course-detail-hero::before, .course-detail-hero::after { display: none; }
 .course-detail-grid { position: relative; z-index: 1; display: grid; grid-template-columns: 2fr 1fr; gap: 2.4rem; align-items: start; }
