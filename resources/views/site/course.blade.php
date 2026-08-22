@@ -5,7 +5,7 @@
 @php($showHeaderLogin = false)
 
 @section('content')
-    <section class="course-detail-hero @if (! empty($course['background_image_url'])) has-course-background @endif" style="--course-background-darkness: {{ $course['background_darkness'] ?? 0 }}%; --course-background-blur: {{ $course['background_blur'] ?? 0 }}px;">
+    <section class="course-detail-hero @if (! empty($course['background_image_url'])) has-course-background @endif" style="--course-background-darkness: {{ $course['background_darkness'] ?? 0 }}%; --course-background-blur: {{ $course['background_blur'] ?? 0 }}px; --course-background-position-x: {{ $course['background_position_x'] ?? 50 }}%; --course-background-position-y: {{ $course['background_position_y'] ?? 50 }}%;">
         @if (! empty($course['background_image_url']))
             <div class="course-detail-background-media" style="background-image: url('{{ $course['background_image_url'] }}');" aria-hidden="true"></div>
             <div class="course-detail-background-overlay" aria-hidden="true"></div>

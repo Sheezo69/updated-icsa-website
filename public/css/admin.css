@@ -538,6 +538,31 @@ a {
 .admin-media-rename { flex: 1; }
 .admin-media-rename .admin-input { min-width: 0; flex: 1; }
 
+.admin-background-preview {
+    position: relative;
+    min-height: 210px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    border: 1px solid var(--admin-border);
+    border-radius: 14px;
+    background-color: #0b1220;
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    cursor: grab;
+    touch-action: none;
+}
+
+.admin-background-preview:active { cursor: grabbing; }
+.admin-background-preview span {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: var(--admin-muted);
+    font-size: 0.9rem;
+}
+
 @media (min-width: 1101px) {
     .admin-main { max-width: 1680px; width: 100%; margin: 0 auto; }
 }
