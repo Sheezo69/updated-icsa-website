@@ -180,89 +180,85 @@
     const form = frame?.closest('form');
     if (!frame || !form) return;
 
-    const escapeHtml = (value) => String(value ?? '').replace(/[&<>\"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[char]));
-    const lines = (value) => String(value ?? '').split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
-    const pathUrl = (value) => {
-        value = String(value ?? '').trim();
-        if (!value) return '';
-        if (/^https?:\/\//i.test(value) || value.startsWith('/')) return value;
-        return '/' + value.replace(/^\.\.\//, '').replace(/^\//, '');
+    let background;
+    let overlay;
+    let dragging = false;
+    let startX = 0;
+    let startY = 0;
+    let originX = 50;
+    let originY = 50;
+    let uploadedObjectUrl = '';
+
+    const get = (name) => form.querySelector('[name="' + name + '"]');
+    const ensureBackground = () => {
+        const document = frame.contentDocument;
+        const hero = document.querySelector('.course-detail-hero');
+        if (!hero) return false;
+        background = document.querySelector('.course-detail-background-media');
+        overlay = document.querySelector('.course-detail-background-overlay');
+        if (!background) {
+            background = document.createElement('div');
+            background.className = 'course-detail-background-media';
+            hero.prepend(background);
+        }
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.className = 'course-detail-background-overlay';
+            hero.prepend(overlay);
+        }
+        hero.classList.add('has-course-background');
+        return true;
+    };
+    const updateAppearance = () => {
+        if (!ensureBackground()) return;
+        const x = Number(get('background_position_x').value || 50);
+        const y = Number(get('background_position_y').value || 50);
+        background.style.backgroundPosition = x + '% ' + y + '%';
+        background.style.filter = 'blur(' + (get('background_blur').value || 0) + 'px)';
+        overlay.style.background = 'rgba(0,0,0,' + ((get('background_darkness').value || 0) / 100) + ')';
+    };
+    const updateImage = (url) => {
+        if (!ensureBackground()) return;
+        background.style.backgroundImage = url ? "url('" + url.replaceAll("'", '%27') + "')" : 'none';
+        updateAppearance();
     };
 
-    const render = () => {
-        const data = new FormData(form);
-        const value = (name) => data.get(name) || '';
-        const selectedFile = document.getElementById('background_image_file')?.files?.[0];
-        const backgroundUrl = selectedFile
-            ? URL.createObjectURL(selectedFile)
-            : pathUrl(value('background_image'));
-        const imageUrl = pathUrl(value('image'));
-        const positionX = value('background_position_x') || 50;
-        const positionY = value('background_position_y') || 50;
-        const darkness = value('background_darkness') || 0;
-        const blur = value('background_blur') || 0;
-        const title = escapeHtml(value('title') || 'Course Preview');
-        const meta = [value('duration'), value('certification'), value('diploma_type')]
-            .filter(Boolean).map((item) => `<span class="course-detail-meta-item"><i class="fas fa-circle-check"></i> ${escapeHtml(item)}</span>`).join('');
-        const list = (text) => lines(text).map((item) => `<li><i class="fas fa-check"></i> ${escapeHtml(item)}</li>`).join('');
-        const section = (heading, text, listMode = false) => {
-            if (!String(text).trim()) return '';
-            return `<article class="tab-panel course-block"><h3>${heading}</h3>${listMode ? `<ul>${list(text)}</ul>` : `<p>${escapeHtml(text)}</p>`}</article>`;
-        };
-        const backgroundStyle = backgroundUrl
-            ? `background-image:url('${backgroundUrl.replaceAll("'", '%27')}');background-position:${positionX}% ${positionY}%;filter:blur(${blur}px);`
-            : '';
-        const darknessOverlay = backgroundUrl ? `<div class="course-detail-background-overlay" style="background:rgba(0,0,0,${Number(darkness) / 100});"></div>` : '';
-        const heroClass = backgroundUrl ? ' has-course-background' : '';
-
-        frame.addEventListener('load', () => {
-            const background = frame.contentDocument.querySelector('.course-detail-background-media');
-            if (!background) return;
-            frame.style.height = Math.max(900, frame.contentDocument.body.scrollHeight + 24) + 'px';
-            let dragging = false;
-            let startX = 0;
-            let startY = 0;
-            let originX = Number(positionX);
-            let originY = Number(positionY);
-            const update = (x, y) => {
-                x = Math.max(0, Math.min(100, Math.round(x)));
-                y = Math.max(0, Math.min(100, Math.round(y)));
-                background.style.backgroundPosition = x + '% ' + y + '%';
-                form.querySelector('[name="background_position_x"]').value = x;
-                form.querySelector('[name="background_position_y"]').value = y;
-            };
-            background.addEventListener('pointerdown', (event) => {
-                dragging = true;
-                background.setPointerCapture(event.pointerId);
-                startX = event.clientX;
-                startY = event.clientY;
-                originX = Number(form.querySelector('[name="background_position_x"]').value);
-                originY = Number(form.querySelector('[name="background_position_y"]').value);
-            });
-            background.addEventListener('pointermove', (event) => {
-                if (dragging) update(originX + (event.clientX - startX) / background.clientWidth * 100, originY + (event.clientY - startY) / background.clientHeight * 100);
-            });
-            background.addEventListener('pointerup', () => dragging = false);
-            background.addEventListener('pointercancel', () => dragging = false);
-        }, { once: true });
-        const backgroundMarkup = backgroundUrl ? '<div class="course-detail-background-media" style="' + backgroundStyle + '"></div>' + darknessOverlay : '';
-        const imageMarkup = imageUrl ? '<img src="' + escapeHtml(imageUrl) + '" alt="' + title + '" class="course-detail-image">' : '';
-        const priceMarkup = value('price') ? '<div class="course-detail-price"><div class="price">' + escapeHtml(value('price')) + '</div><div class="price-note">' + escapeHtml(value('price_note')) + '</div></div>' : '';
-        const highlightsMarkup = value('highlights') ? '<div class="course-detail-features"><h4>Program Highlights</h4><ul>' + list(value('highlights')) + '</ul></div>' : '';
-        frame.srcdoc = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + title + ' | Preview</title><link rel="stylesheet" href="{{ asset('css/style.css') }}"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></head><body>' +
-            '<section class="course-detail-hero' + heroClass + '">' + backgroundMarkup +
-            '<div class="container"><div class="course-detail-grid"><div class="course-detail-content"><h1>' + title + '</h1><div class="course-detail-meta">' + meta + '</div><p class="course-detail-description">' + escapeHtml(value('description')) + '</p></div><aside class="course-detail-card">' + imageMarkup + priceMarkup + highlightsMarkup + '<a class="btn btn-primary" href="#">Enroll Now</a></aside></div></div></section>' +
-            '<section class="course-content-section"><div class="container"><div class="course-content-grid">' + section('Program Overview', value('overview')) + section('What You Will Learn', value('learning_outcomes'), true) + section('Who Should Enroll', value('target_audience'), true) + section('Career Opportunities', value('careers'), true) + '</div></div></section></body></html>';
-    };
-
-    let renderTimer;
-    const queueRender = () => {
-        clearTimeout(renderTimer);
-        renderTimer = setTimeout(render, 180);
-    };
-    form.addEventListener('input', queueRender);
-    form.addEventListener('change', queueRender);
-    render();
+    frame.addEventListener('load', () => {
+        frame.style.height = Math.max(900, frame.contentDocument.body.scrollHeight + 24) + 'px';
+        updateAppearance();
+        background?.addEventListener('pointerdown', (event) => {
+            dragging = true;
+            background.setPointerCapture(event.pointerId);
+            startX = event.clientX;
+            startY = event.clientY;
+            originX = Number(get('background_position_x').value || 50);
+            originY = Number(get('background_position_y').value || 50);
+        });
+        background?.addEventListener('pointermove', (event) => {
+            if (!dragging) return;
+            const x = Math.max(0, Math.min(100, Math.round(originX + (event.clientX - startX) / background.clientWidth * 100)));
+            const y = Math.max(0, Math.min(100, Math.round(originY + (event.clientY - startY) / background.clientHeight * 100)));
+            get('background_position_x').value = x;
+            get('background_position_y').value = y;
+            background.style.backgroundPosition = x + '% ' + y + '%';
+        });
+        background?.addEventListener('pointerup', () => dragging = false);
+        background?.addEventListener('pointercancel', () => dragging = false);
+    });
+    document.getElementById('background_image_file')?.addEventListener('change', (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        if (uploadedObjectUrl) URL.revokeObjectURL(uploadedObjectUrl);
+        uploadedObjectUrl = URL.createObjectURL(file);
+        updateImage(uploadedObjectUrl);
+    });
+    document.getElementById('background_image_library')?.addEventListener('change', (event) => {
+        get('background_image').value = event.target.value;
+        updateImage(event.target.value ? '{{ asset('') }}' + event.target.value.replace(/^\//, '') : '');
+    });
+    form.addEventListener('input', (event) => {
+        if (['background_darkness', 'background_blur'].includes(event.target.name)) updateAppearance();
+    });
 })();
 </script>
 @endpush
