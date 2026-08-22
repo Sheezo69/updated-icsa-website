@@ -54,7 +54,7 @@ class MediaController extends Controller
             return back()->with('error', $exception->getMessage());
         }
 
-        return back()->with('success', 'Image renamed successfully.');
+        return back()->with('success', 'Image renamed successfully as '.basename($newPath).'.');
     }
 
     public function destroy(Request $request, MediaLibrary $media, CourseFileRepository $courses): RedirectResponse

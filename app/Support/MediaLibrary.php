@@ -70,8 +70,11 @@ class MediaLibrary
 
         $newFilename = $newBase.'.'.$extension;
         $newPath = $directory.'/'.$newFilename;
-        if ($newPath !== $directory.'/'.$filename && Storage::disk('public')->exists($newPath)) {
-            throw new \InvalidArgumentException('An image with that name already exists.');
+        $suffix = 2;
+        while ($newPath !== $directory.'/'.$filename && Storage::disk('public')->exists($newPath)) {
+            $newFilename = $newBase.'-'.$suffix.'.'.$extension;
+            $newPath = $directory.'/'.$newFilename;
+            $suffix++;
         }
 
         Storage::disk('public')->move($directory.'/'.$filename, $newPath);
