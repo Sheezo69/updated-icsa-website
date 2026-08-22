@@ -245,12 +245,14 @@
             background.addEventListener('pointerup', () => dragging = false);
             background.addEventListener('pointercancel', () => dragging = false);
         }, { once: true });
-        frame.srcdoc = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} | Preview</title><link rel="stylesheet" href="{{ asset('css/style.css') }}"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></head><body>
-            <section class="course-detail-hero${heroClass}">
-                ${backgroundUrl ? `<div class="course-detail-background-media" style="${backgroundStyle}"></div>${darknessOverlay}` : ''}
-                <div class="container"><div class="course-detail-grid"><div class="course-detail-content"><h1>${title}</h1><div class="course-detail-meta">${meta}</div><p class="course-detail-description">${escapeHtml(value('description'))}</p></div><aside class="course-detail-card">${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="${title}" class="course-detail-image">` : ''}${value('price') ? `<div class="course-detail-price"><div class="price">${escapeHtml(value('price'))}</div><div class="price-note">${escapeHtml(value('price_note'))}</div></div>` : ''}${value('highlights') ? `<div class="course-detail-features"><h4>Program Highlights</h4><ul>${list(value('highlights'))}</ul></div>` : ''}<a class="btn btn-primary" href="#">Enroll Now</a></aside></div></div>
-            </section><section class="course-content-section"><div class="container"><div class="course-content-grid">${section('Program Overview', value('overview'))}${section('What You Will Learn', value('learning_outcomes'), true)}${section('Who Should Enroll', value('target_audience'), true)}${section('Career Opportunities', value('careers'), true)}</div></div></section>
-        </body></html>`);
+        const backgroundMarkup = backgroundUrl ? '<div class="course-detail-background-media" style="' + backgroundStyle + '"></div>' + darknessOverlay : '';
+        const imageMarkup = imageUrl ? '<img src="' + escapeHtml(imageUrl) + '" alt="' + title + '" class="course-detail-image">' : '';
+        const priceMarkup = value('price') ? '<div class="course-detail-price"><div class="price">' + escapeHtml(value('price')) + '</div><div class="price-note">' + escapeHtml(value('price_note')) + '</div></div>' : '';
+        const highlightsMarkup = value('highlights') ? '<div class="course-detail-features"><h4>Program Highlights</h4><ul>' + list(value('highlights')) + '</ul></div>' : '';
+        frame.srcdoc = '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + title + ' | Preview</title><link rel="stylesheet" href="{{ asset('css/style.css') }}"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></head><body>' +
+            '<section class="course-detail-hero' + heroClass + '">' + backgroundMarkup +
+            '<div class="container"><div class="course-detail-grid"><div class="course-detail-content"><h1>' + title + '</h1><div class="course-detail-meta">' + meta + '</div><p class="course-detail-description">' + escapeHtml(value('description')) + '</p></div><aside class="course-detail-card">' + imageMarkup + priceMarkup + highlightsMarkup + '<a class="btn btn-primary" href="#">Enroll Now</a></aside></div></div></section>' +
+            '<section class="course-content-section"><div class="container"><div class="course-content-grid">' + section('Program Overview', value('overview')) + section('What You Will Learn', value('learning_outcomes'), true) + section('Who Should Enroll', value('target_audience'), true) + section('Career Opportunities', value('careers'), true) + '</div></div></section></body></html>';
     };
 
     let renderTimer;
