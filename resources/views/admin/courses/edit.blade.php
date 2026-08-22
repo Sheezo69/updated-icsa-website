@@ -54,7 +54,7 @@
 
                 <div class="admin-background-grid">
                     <div class="admin-field">
-                        <label for="background_image_file">Background Image</label>
+                        <label for="background_image_file">Background Image <span class="admin-note">(up to 20 MB)</span></label>
                         <input id="background_image_file" type="file" name="background_image_file" class="admin-input" accept="image/jpeg,image/png,image/webp,image/gif">
                         @if (! empty($course['background_image']))
                             <p class="admin-note">Current: {{ $course['background_image'] }}</p>
