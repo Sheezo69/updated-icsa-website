@@ -98,7 +98,7 @@ class CourseController extends Controller
             'description' => ['nullable', 'string', 'max:1000'],
             'image' => ['nullable', 'string', 'max:255'],
             'background_image' => ['nullable', 'string', 'max:255'],
-            'background_image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:10240'],
+            'background_image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:20480'],
             'remove_background_image' => ['nullable', 'boolean'],
             'background_darkness' => ['nullable', 'integer', 'min:0', 'max:100'],
             'background_blur' => ['nullable', 'integer', 'min:0', 'max:20'],
