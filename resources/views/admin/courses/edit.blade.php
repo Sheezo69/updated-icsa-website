@@ -152,9 +152,18 @@
                 <textarea id="careers" name="careers" class="admin-textarea">{{ old('careers', $course['careers']) }}</textarea>
             </div>
 
+            <section class="admin-live-preview-panel admin-field-full">
+                <div class="admin-panel-header">
+                    <div>
+                        <h2 class="admin-section-title">Live Course Preview</h2>
+                        <p class="admin-section-subtitle">The full course page updates as you edit. Drag directly on the hero image to position it.</p>
+                    </div>
+                </div>
+                <iframe id="course-live-preview-frame" title="Live course preview"></iframe>
+            </section>
+
             <div class="admin-actions admin-field-full">
                 <button type="submit" class="admin-btn admin-btn-primary">{{ $isEdit ? 'Update Course' : 'Create Course' }}</button>
-                <button type="button" id="course-live-preview" class="admin-btn admin-btn-secondary"><i class="fas fa-eye"></i> Preview Unsaved Course</button>
                 <a href="{{ route('admin.courses.index') }}" class="admin-btn admin-btn-secondary">Back</a>
                 @if ($isEdit)
                     <a href="{{ url('/courses/'.$course['slug'].'.html') }}" target="_blank" class="admin-btn admin-btn-secondary">Preview</a>
@@ -167,9 +176,9 @@
 @push('scripts')
 <script>
 (() => {
-    const button = document.getElementById('course-live-preview');
-    const form = button?.closest('form');
-    if (!button || !form) return;
+    const frame = document.getElementById('course-live-preview-frame');
+    const form = frame?.closest('form');
+    if (!frame || !form) return;
 
     const escapeHtml = (value) => String(value ?? '').replace(/[&<>\"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[char]));
     const lines = (value) => String(value ?? '').split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
@@ -180,7 +189,7 @@
         return '/' + value.replace(/^\.\.\//, '').replace(/^\//, '');
     };
 
-    button.addEventListener('click', () => {
+    const render = () => {
         const data = new FormData(form);
         const value = (name) => data.get(name) || '';
         const selectedFile = document.getElementById('background_image_file')?.files?.[0];
@@ -193,9 +202,6 @@
         const darkness = value('background_darkness') || 0;
         const blur = value('background_blur') || 0;
         const title = escapeHtml(value('title') || 'Course Preview');
-        const preview = window.open('', '_blank');
-        if (!preview) return;
-
         const meta = [value('duration'), value('certification'), value('diploma_type')]
             .filter(Boolean).map((item) => `<span class="course-detail-meta-item"><i class="fas fa-circle-check"></i> ${escapeHtml(item)}</span>`).join('');
         const list = (text) => lines(text).map((item) => `<li><i class="fas fa-check"></i> ${escapeHtml(item)}</li>`).join('');
@@ -209,17 +215,10 @@
         const darknessOverlay = backgroundUrl ? `<div class="course-detail-background-overlay" style="background:rgba(0,0,0,${Number(darkness) / 100});"></div>` : '';
         const heroClass = backgroundUrl ? ' has-course-background' : '';
 
-        preview.document.write(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} | Preview</title><link rel="stylesheet" href="{{ asset('css/style.css') }}"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></head><body>
-            <div style="position:sticky;top:0;z-index:20;padding:.75rem 1rem;background:#081a33;color:#fff;text-align:center;font-weight:700;">UNSAVED COURSE PREVIEW — close this tab to return to editing</div>
-            <section class="course-detail-hero${heroClass}">
-                ${backgroundUrl ? `<div class="course-detail-background-media" style="${backgroundStyle}"></div>${darknessOverlay}` : ''}
-                <div class="container"><div class="course-detail-grid"><div class="course-detail-content"><h1>${title}</h1><div class="course-detail-meta">${meta}</div><p class="course-detail-description">${escapeHtml(value('description'))}</p></div><aside class="course-detail-card">${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="${title}" class="course-detail-image">` : ''}${value('price') ? `<div class="course-detail-price"><div class="price">${escapeHtml(value('price'))}</div><div class="price-note">${escapeHtml(value('price_note'))}</div></div>` : ''}${value('highlights') ? `<div class="course-detail-features"><h4>Program Highlights</h4><ul>${list(value('highlights'))}</ul></div>` : ''}<a class="btn btn-primary" href="#">Enroll Now</a></aside></div></div>
-            </section><section class="course-content-section"><div class="container"><div class="course-content-grid">${section('Program Overview', value('overview'))}${section('What You Will Learn', value('learning_outcomes'), true)}${section('Who Should Enroll', value('target_audience'), true)}${section('Career Opportunities', value('careers'), true)}</div></div></section>
-        </body></html>`);
-        preview.document.close();
-        preview.addEventListener('load', () => {
-            const background = preview.document.querySelector('.course-detail-background-media');
+        frame.addEventListener('load', () => {
+            const background = frame.contentDocument.querySelector('.course-detail-background-media');
             if (!background) return;
+            frame.style.height = Math.max(900, frame.contentDocument.body.scrollHeight + 24) + 'px';
             let dragging = false;
             let startX = 0;
             let startY = 0;
@@ -229,29 +228,39 @@
                 x = Math.max(0, Math.min(100, Math.round(x)));
                 y = Math.max(0, Math.min(100, Math.round(y)));
                 background.style.backgroundPosition = x + '% ' + y + '%';
-                preview.opener?.postMessage({ type: 'course-background-position', x, y }, location.origin);
+                form.querySelector('[name="background_position_x"]').value = x;
+                form.querySelector('[name="background_position_y"]').value = y;
             };
             background.addEventListener('pointerdown', (event) => {
                 dragging = true;
                 background.setPointerCapture(event.pointerId);
                 startX = event.clientX;
                 startY = event.clientY;
-                originX = Number(positionX);
-                originY = Number(positionY);
+                originX = Number(form.querySelector('[name="background_position_x"]').value);
+                originY = Number(form.querySelector('[name="background_position_y"]').value);
             });
             background.addEventListener('pointermove', (event) => {
                 if (dragging) update(originX + (event.clientX - startX) / background.clientWidth * 100, originY + (event.clientY - startY) / background.clientHeight * 100);
             });
             background.addEventListener('pointerup', () => dragging = false);
             background.addEventListener('pointercancel', () => dragging = false);
-        });
-    });
+        }, { once: true });
+        frame.srcdoc = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} | Preview</title><link rel="stylesheet" href="{{ asset('css/style.css') }}"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></head><body>
+            <section class="course-detail-hero${heroClass}">
+                ${backgroundUrl ? `<div class="course-detail-background-media" style="${backgroundStyle}"></div>${darknessOverlay}` : ''}
+                <div class="container"><div class="course-detail-grid"><div class="course-detail-content"><h1>${title}</h1><div class="course-detail-meta">${meta}</div><p class="course-detail-description">${escapeHtml(value('description'))}</p></div><aside class="course-detail-card">${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="${title}" class="course-detail-image">` : ''}${value('price') ? `<div class="course-detail-price"><div class="price">${escapeHtml(value('price'))}</div><div class="price-note">${escapeHtml(value('price_note'))}</div></div>` : ''}${value('highlights') ? `<div class="course-detail-features"><h4>Program Highlights</h4><ul>${list(value('highlights'))}</ul></div>` : ''}<a class="btn btn-primary" href="#">Enroll Now</a></aside></div></div>
+            </section><section class="course-content-section"><div class="container"><div class="course-content-grid">${section('Program Overview', value('overview'))}${section('What You Will Learn', value('learning_outcomes'), true)}${section('Who Should Enroll', value('target_audience'), true)}${section('Career Opportunities', value('careers'), true)}</div></div></section>
+        </body></html>`);
+    };
 
-    window.addEventListener('message', (event) => {
-        if (event.origin !== location.origin || event.data?.type !== 'course-background-position') return;
-        document.querySelector('[name="background_position_x"]').value = event.data.x;
-        document.querySelector('[name="background_position_y"]').value = event.data.y;
-    });
+    let renderTimer;
+    const queueRender = () => {
+        clearTimeout(renderTimer);
+        renderTimer = setTimeout(render, 180);
+    };
+    form.addEventListener('input', queueRender);
+    form.addEventListener('change', queueRender);
+    render();
 })();
 </script>
 @endpush

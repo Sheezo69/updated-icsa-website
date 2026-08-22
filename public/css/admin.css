@@ -538,6 +538,22 @@ a {
 .admin-media-rename { flex: 1; }
 .admin-media-rename .admin-input { min-width: 0; flex: 1; }
 
+.admin-live-preview-panel {
+    overflow: hidden;
+    border: 1px solid var(--admin-border);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.admin-live-preview-panel > .admin-panel-header { padding: 1rem 1.1rem; }
+.admin-live-preview-panel iframe {
+    display: block;
+    width: 100%;
+    min-height: 900px;
+    border: 0;
+    background: #fff;
+}
+
 
 @media (min-width: 1101px) {
     .admin-main { max-width: 1680px; width: 100%; margin: 0 auto; }
