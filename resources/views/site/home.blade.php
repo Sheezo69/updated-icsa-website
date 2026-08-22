@@ -15,7 +15,7 @@
                     <p class="hero-description">Join Kuwait's leading institute for Computer Science, Administration, and Professional Development. Explore every course from one streamlined page.</p>
                     <div class="hero-buttons">
                         <a href="#courses" class="btn btn-primary btn-lg">Explore Courses</a>
-                        <a href="#contact" class="btn btn-white btn-lg">Contact Us</a>
+                        <a href="{{ route('site.contact') }}" class="btn btn-white btn-lg">Contact Us</a>
                     </div>
                     <div class="hero-stats">
                         <div class="hero-stat">
@@ -223,10 +223,10 @@
             </div>
 
             <div class="filter-buttons home-course-filter">
-                <button class="filter-btn active" data-filter="all">All Courses</button>
-                <button class="filter-btn" data-filter="it">IT & Technical</button>
-                <button class="filter-btn" data-filter="diploma">UK Diploma Programs</button>
-                <button class="filter-btn" data-filter="language">Language & Professional</button>
+                <button type="button" class="filter-btn active" data-filter="all" aria-pressed="true">All Courses</button>
+                <button type="button" class="filter-btn" data-filter="it" aria-pressed="false">IT & Technical</button>
+                <button type="button" class="filter-btn" data-filter="diploma" aria-pressed="false">UK Diploma Programs</button>
+                <button type="button" class="filter-btn" data-filter="language" aria-pressed="false">Language & Professional</button>
             </div>
 
             <div class="courses-grid" id="coursesGrid">
@@ -347,7 +347,7 @@
                 <p>Join thousands of successful graduates who have transformed their careers with ICSA. Enroll today and take the first step towards a brighter future.</p>
                 <div class="cta-buttons">
                     <a href="#courses" class="btn btn-secondary btn-lg">Browse Courses</a>
-                    <a href="#contact" class="btn btn-outline btn-lg" style="border-color: var(--primary-dark); color: var(--primary-dark);">Contact Us</a>
+                    <a href="{{ route('site.contact') }}" class="btn btn-outline btn-lg" style="border-color: var(--primary-dark); color: var(--primary-dark);">Contact Us</a>
                 </div>
             </div>
         </div>

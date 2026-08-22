@@ -25,7 +25,7 @@
                             <span class="course-detail-meta-item"><i class="fas fa-certificate"></i> {{ $course['diploma_type'] }}</span>
                         @endif
                     </div>
-                    <p class="course-detail-description">{{ $course['description'] }}</p>
+                    <p class="course-detail-description" style="margin: 0; padding: 1rem 1.2rem; border: 1px solid rgba(255,255,255,0.2); border-radius: 14px; background: rgba(3,13,28,0.62); box-shadow: 0 10px 24px rgba(0,0,0,0.16); backdrop-filter: blur(6px);">{{ $course['description'] }}</p>
                 </div>
                 <aside class="course-detail-card">
                     @if ($course['youtube_video_id'] && $course['video_poster_url'])
@@ -55,7 +55,7 @@
                             </ul>
                         </div>
                     @endif
-                    <a href="{{ route('site.home', ['course' => $course['slug']]) }}#contact" class="btn btn-primary">Enroll Now</a>
+                    <a href="{{ route('site.contact', ['course' => $course['slug']]) }}" class="btn btn-primary">Enroll Now</a>
                 </aside>
             </div>
         </div>
@@ -74,22 +74,22 @@
                 @if (! empty($course['learning_outcome_items']))
                     <article class="tab-panel course-block">
                         <h3>What You Will Learn</h3>
-                        <ul>
-                            @foreach ($course['learning_outcome_items'] as $item)
-                                <li><i class="fas fa-check"></i> {{ $item }}</li>
-                            @endforeach
-                        </ul>
+                            <ul>
+                                @foreach ($course['learning_outcome_items'] as $item)
+                                <li>{{ $item }}</li>
+                                @endforeach
+                            </ul>
                     </article>
                 @endif
 
                 @if (! empty($course['target_audience_items']))
                     <article class="tab-panel course-block">
                         <h3>Who Should Enroll</h3>
-                        <ul>
-                            @foreach ($course['target_audience_items'] as $item)
-                                <li><i class="fas fa-check"></i> {{ $item }}</li>
-                            @endforeach
-                        </ul>
+                            <ul>
+                                @foreach ($course['target_audience_items'] as $item)
+                                <li>{{ $item }}</li>
+                                @endforeach
+                            </ul>
                     </article>
                 @endif
 

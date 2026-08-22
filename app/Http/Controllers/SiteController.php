@@ -39,11 +39,9 @@ class SiteController extends Controller
         return new RedirectResponse('/'.$query.'#courses');
     }
 
-    public function contact(Request $request): RedirectResponse
+    public function contact(): View
     {
-        $query = $request->query() ? '?'.http_build_query($request->query()) : '';
-
-        return new RedirectResponse('/'.$query.'#contact');
+        return view('site.contact');
     }
 
     public function course(string $slug, CourseFileRepository $courses): View
@@ -112,7 +110,8 @@ class SiteController extends Controller
     {
         return array_map(function (array $course): array {
             $course['listing_image_url'] = $this->assetUrlFromLegacyPath($course['image'])
-                ?? $this->assetUrlFromLegacyPath($course['video_thumbnail'] ?? '');
+                ?? $this->assetUrlFromLegacyPath($course['video_thumbnail'] ?? '')
+                ?? $this->assetUrlFromLegacyPath($course['background_image'] ?? '');
             $course['listing_category'] = $this->courseCategory($course);
             $course['listing_category_label'] = match ($course['listing_category']) {
                 'diploma' => 'UK Diploma',
@@ -126,24 +125,23 @@ class SiteController extends Controller
 
     private function courseCategory(array $course): string
     {
-        $text = Str::lower(implode(' ', [
+        $titleAndBadge = Str::lower(implode(' ', [
             $course['title'] ?? '',
             $course['badge'] ?? '',
-            $course['diploma_type'] ?? '',
         ]));
 
-        if (str_contains($text, 'diploma') || str_contains($text, 'uk')) {
+        if (str_contains($titleAndBadge, 'diploma') || str_contains($titleAndBadge, 'uk')) {
             return 'diploma';
         }
 
         if (
-            str_contains($text, 'english')
-            || str_contains($text, 'ielts')
-            || str_contains($text, 'arabic')
-            || str_contains($text, 'airline')
-            || str_contains($text, 'travel')
-            || str_contains($text, 'language')
-            || str_contains($text, 'professional')
+            str_contains($titleAndBadge, 'english')
+            || str_contains($titleAndBadge, 'ielts')
+            || str_contains($titleAndBadge, 'arabic')
+            || str_contains($titleAndBadge, 'airline')
+            || str_contains($titleAndBadge, 'travel')
+            || str_contains($titleAndBadge, 'language')
+            || str_contains($titleAndBadge, 'professional')
         ) {
             return 'language';
         }

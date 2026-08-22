@@ -3,10 +3,15 @@
             <div class='inquiry-grid'>
                 <div class="course-inquiry-column">
                     <div class='inquiry-info'>
-                        <span class='section-label'>Course Inquiry</span>
-                        <h2>Interested in This Course?</h2>
-                        <p>Submit your details and our admissions team will contact you with schedules, fees, and enrollment guidance.</p>
-                        <a href="{{ route('site.home') }}#contact" class='btn btn-primary' style='margin-top: 1rem;'>Contact Us</a>
+                        <span class='section-label'>Course Highlights</span>
+                        <h3 class="course-learning-title">What Will You Learn?</h3>
+                        <ul class='course-inquiry-outcomes'>
+                            @forelse (($course['learning_outcome_items'] ?? $course['highlight_items'] ?? []) as $item)
+                                <li style='gap: 0;'><i class='fas fa-check' style='margin-right: 1rem;'></i><span>{{ $item }}</span></li>
+                            @empty
+                                <li style='gap: 0;'><i class='fas fa-check' style='margin-right: 1rem;'></i><span>Practical skills designed for your career goals</span></li>
+                            @endforelse
+                        </ul>
                     </div>
                     @include('site.partials.course-testimonials')
                 </div>
