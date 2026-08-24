@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\VisitorConfirmation;
 use App\Models\ContactMessage;
 use App\Support\CourseFileRepository;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -50,7 +52,7 @@ class FormController extends Controller
         }
 
         try {
-            ContactMessage::query()->create([
+            $contactMessage = ContactMessage::query()->create([
                 'name' => $this->trimmed($request->string('name')->toString(), 120),
                 'email' => $this->trimmed($request->string('email')->toString(), 190),
                 'phone' => $this->trimmed($request->string('phone')->toString(), 40),
@@ -59,6 +61,8 @@ class FormController extends Controller
                 'message' => $this->nullableTrimmed($request->input('message'), 4000),
                 'status' => ContactMessage::STATUS_NEW,
             ]);
+
+            $this->sendVisitorConfirmation($contactMessage);
         } catch (\Throwable $exception) {
             report($exception);
 
@@ -97,7 +101,7 @@ class FormController extends Controller
         }
 
         try {
-            ContactMessage::query()->create([
+            $contactMessage = ContactMessage::query()->create([
                 'name' => $this->trimmed($request->string('name')->toString(), 120),
                 'email' => $this->trimmed($request->string('email')->toString(), 190),
                 'phone' => $this->trimmed($request->string('phone')->toString(), 40),
@@ -106,6 +110,8 @@ class FormController extends Controller
                 'message' => $this->nullableTrimmed($request->input('message'), 4000),
                 'status' => ContactMessage::STATUS_NEW,
             ]);
+
+            $this->sendVisitorConfirmation($contactMessage);
         } catch (\Throwable $exception) {
             report($exception);
 
@@ -132,6 +138,15 @@ class FormController extends Controller
         RateLimiter::hit($key, $windowSeconds);
 
         return null;
+    }
+
+    private function sendVisitorConfirmation(ContactMessage $contactMessage): void
+    {
+        try {
+            Mail::to($contactMessage->email)->send(new VisitorConfirmation($contactMessage));
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
     }
 
     private function allowedCourseValues(CourseFileRepository $courses, bool $allowEmpty = true): array
