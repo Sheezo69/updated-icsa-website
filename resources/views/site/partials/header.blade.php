@@ -22,7 +22,11 @@
                 @if ($showHeaderLogin)
                     <a href="{{ config('services.student_portal.url') }}" class="btn btn-outline btn-sm" target="_blank" rel="noopener">Login</a>
                 @endif
-                <a href="{{ route('site.home') }}#courses" class="btn btn-primary btn-sm">Enroll Now</a>
+                @if (request()->routeIs('site.course'))
+                    <a href="#reserve-a-spot" class="btn btn-primary btn-sm">Enroll Now</a>
+                @else
+                    <a href="{{ route('site.home') }}#courses" class="btn btn-primary btn-sm">Enroll Now</a>
+                @endif
                 <button class="menu-toggle" id="menuToggle">
                     <i class="fas fa-bars"></i>
                 </button>

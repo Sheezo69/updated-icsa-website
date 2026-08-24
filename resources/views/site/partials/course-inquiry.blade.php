@@ -1,4 +1,4 @@
-<section class='inquiry-section'>
+<section id='reserve-a-spot' class='inquiry-section' style='scroll-margin-top: 100px;'>
 <div class='container'>
             <div class='inquiry-grid'>
                 <div class="course-inquiry-column">

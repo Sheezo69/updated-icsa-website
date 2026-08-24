@@ -55,7 +55,7 @@
                             </ul>
                         </div>
                     @endif
-                    <a href="{{ route('site.contact', ['course' => $course['slug']]) }}" class="btn btn-primary">Enroll Now</a>
+                    <a href="#reserve-a-spot" class="btn btn-primary">Enroll Now</a>
                 </aside>
             </div>
         </div>
