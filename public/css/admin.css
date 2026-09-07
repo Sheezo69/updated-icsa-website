@@ -494,6 +494,64 @@ a {
     font-size: 0.9rem;
 }
 
+.admin-media-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.9rem;
+}
+
+.admin-media-card {
+    overflow: hidden;
+    border: 1px solid var(--admin-border);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.admin-media-preview {
+    display: block;
+    width: 100%;
+    height: 145px;
+    object-fit: cover;
+    background: #0b1220;
+}
+
+.admin-media-card-body {
+    display: grid;
+    gap: 0.55rem;
+    padding: 0.85rem;
+}
+
+.admin-media-card-body strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-media-actions,
+.admin-media-rename {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.admin-media-rename { flex: 1; }
+.admin-media-rename .admin-input { min-width: 0; flex: 1; }
+
+@media (max-width: 1250px) {
+    .admin-media-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 850px) {
+    .admin-media-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 520px) {
+    .admin-media-grid { grid-template-columns: 1fr; }
+}
+
+
+
 @media (min-width: 1101px) {
     .admin-main { max-width: 1680px; width: 100%; margin: 0 auto; }
 }
@@ -537,3 +595,31 @@ a {
         text-align: left;
     }
 }
+/* Inquiry email tracking */
+.email-status-summary { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .65rem; }
+.email-pill { display: inline-flex; align-items: center; gap: .4rem; border: 1px solid var(--admin-border); border-radius: 999px; padding: .3rem .65rem; font-size: .72rem; font-weight: 700; white-space: nowrap; color: var(--admin-muted); background: var(--admin-surface-soft); }
+.email-pill::before { content: ''; width: .4rem; height: .4rem; border-radius: 50%; background: currentColor; }
+.email-pill-sent { color: #79dfac; background: rgba(31,157,98,.12); border-color: rgba(31,157,98,.3); }
+.email-pill-failed { color: #ffabab; background: rgba(209,67,67,.12); border-color: rgba(209,67,67,.3); }
+.email-pill-pending { color: #f3cf78; background: rgba(209,154,24,.12); border-color: rgba(209,154,24,.3); }
+.admin-table .email-tracking-row > td { padding-top: 0; border-top: 0; }
+.email-tracking { border: 1px solid var(--admin-border); border-radius: 12px; background: var(--admin-surface); }
+.email-tracking > summary { cursor: pointer; padding: .85rem 1rem; font-weight: 600; font-size: .85rem; }
+.email-tracking > summary span { margin-left: .7rem; font-weight: 400; color: var(--admin-muted); }
+.email-tracking summary:focus-visible { outline: 2px solid var(--admin-primary); outline-offset: 3px; }
+.email-tracking-content { padding: 0 1rem 1rem; white-space: normal; }
+.email-tracking-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 1rem; }
+.email-tracking-card { padding: 1rem; border: 1px solid var(--admin-border); border-radius: 12px; background: var(--admin-surface-soft); min-width: 0; overflow-wrap: anywhere; }
+.email-tracking-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .6rem; }
+.email-tracking-heading h3 { margin: 0; font-size: .95rem; }
+.email-tracking-card dl { display: grid; grid-template-columns: auto 1fr; gap: .55rem 1rem; margin: 1rem 0; font-size: .8rem; }
+.email-tracking-card dt { color: var(--admin-muted); }
+.email-tracking-card dd { margin: 0; }
+.email-tracking-card p { font-size: .8rem; line-height: 1.6; margin: .75rem 0; }
+.email-tracking-error { color: #ffabab; }
+.email-attempt-history { margin-top: 1rem; border-top: 1px solid var(--admin-border); padding-top: .8rem; font-size: .8rem; }
+.email-attempt-history summary { cursor: pointer; color: var(--admin-muted); }
+.email-attempt-history ol { padding-left: 1.3rem; }
+.email-attempt-history li { margin-top: .8rem; }
+.email-attempt-history li > span:not(.email-pill), .email-attempt-history time { display: block; margin-top: .3rem; }
+@media (max-width: 800px) { .email-tracking-grid { grid-template-columns: 1fr; } }

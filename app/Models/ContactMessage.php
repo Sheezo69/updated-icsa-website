@@ -24,10 +24,16 @@ class ContactMessage extends Model
         'admin_notes',
         'replied_at',
         'updated_by',
+        'form_type',
     ];
 
     protected $casts = [
         'created_at' => 'datetime',
         'replied_at' => 'datetime',
     ];
+
+    public function emailAttempts(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(InquiryEmailAttempt::class)->latest('id');
+    }
 }

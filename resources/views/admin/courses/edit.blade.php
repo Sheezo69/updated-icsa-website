@@ -12,6 +12,8 @@
             @endif
             <input type="hidden" name="video_thumbnail" value="{{ old('video_thumbnail', $course['video_thumbnail'] ?? '') }}">
             <input type="hidden" name="background_image" value="{{ old('background_image', $course['background_image'] ?? '') }}">
+            <input type="hidden" name="image" value="{{ old('image', $course['image'] ?? '') }}">
+            <input type="hidden" name="poster_image" value="{{ old('poster_image', $course['poster_image'] ?? '') }}">
 
             <div class="admin-field">
                 <label for="title">Title</label>
@@ -19,8 +21,17 @@
             </div>
 
             <div class="admin-field">
-                <label for="badge">Badge / Category</label>
-                <input id="badge" name="badge" class="admin-input" value="{{ old('badge', $course['badge']) }}">
+                <label for="categories">Categories</label>
+                @php($selectedCategories = old('categories', $course['categories'] ?? ['it']))
+                <select id="categories" name="categories[]" class="admin-select" required multiple size="6">
+                    <option value="it" @selected(in_array('it', $selectedCategories, true))>IT &amp; Technical</option>
+                    <option value="diploma" @selected(in_array('diploma', $selectedCategories, true))>UK Diploma Programs</option>
+                    <option value="language" @selected(in_array('language', $selectedCategories, true))>Language &amp; Professional</option>
+                    <option value="nursing" @selected(in_array('nursing', $selectedCategories, true))>Nursing &amp; Healthcare</option>
+                    <option value="design" @selected(in_array('design', $selectedCategories, true))>Design &amp; Multimedia</option>
+                    <option value="short-skills" @selected(in_array('short-skills', $selectedCategories, true))>Short Skill Courses</option>
+                </select>
+                <p class="admin-note">Hold Command/Ctrl to select more than one category.</p>
             </div>
 
             <div class="admin-field">
@@ -38,9 +49,28 @@
                 <input id="diploma_type" name="diploma_type" class="admin-input" value="{{ old('diploma_type', $course['diploma_type']) }}">
             </div>
 
-            <div class="admin-field">
-                <label for="image">Image Path</label>
-                <input id="image" name="image" class="admin-input" value="{{ old('image', $course['image']) }}" placeholder="../images/detail-course.jpg">
+            <div class="admin-background-panel admin-field-full">
+                <div class="admin-background-panel-header">
+                    <div>
+                        <h2>Course Cover Image</h2>
+                        <p class="admin-note">This image appears on the course card and course page instead of the default ICSA logo.</p>
+                    </div>
+                    <span class="admin-background-chip">JPG · PNG · WEBP · GIF</span>
+                </div>
+                <div class="admin-field">
+                    <label for="image_file">Upload Course Cover <span class="admin-note">(up to 20 MB)</span></label>
+                    <input id="image_file" type="file" name="image_file" class="admin-input" accept="image/jpeg,image/png,image/webp,image/gif">
+                    @error('image_file')
+                        <p class="admin-error">{{ $message }}</p>
+                    @enderror
+                    @if (! empty($course['image']))
+                        <p class="admin-note">Current: {{ $course['image'] }}</p>
+                        <label class="admin-checkbox">
+                            <input type="checkbox" name="remove_image" value="1">
+                            Remove current cover image
+                        </label>
+                    @endif
+                </div>
             </div>
 
             <div class="admin-background-panel admin-field-full">
@@ -66,9 +96,18 @@
                                 Remove current image
                             </label>
                         @endif
+                        <label for="background_image_library" style="margin-top: 0.75rem;">Or choose from Media Library</label>
+                        <select id="background_image_library" class="admin-select" onchange="document.querySelector('[name=background_image]').value = this.value">
+                            <option value="" @selected(old('background_image', $course['background_image'] ?? '') === '')>No background image</option>
+                            @foreach ($backgroundMedia as $media)
+                                <option value="{{ $media['path'] }}" @selected(old('background_image', $course['background_image'] ?? '') === $media['path'])>{{ $media['filename'] }}</option>
+                            @endforeach
+                        </select>
+                        <a href="{{ route('admin.media.index', ['directory' => 'course-backgrounds']) }}" class="admin-note" style="display: inline-block; margin-top: 0.5rem;">Manage images in Media Library</a>
                     </div>
 
                     <div class="admin-background-controls">
+                        <p class="admin-note">Use <strong>Preview Unsaved Course</strong> below to view the complete course page and drag the hero image into position.</p>
                         <div class="admin-range-row">
                             <div class="admin-range-label"><label for="background_darkness">Darkness</label><output>{{ old('background_darkness', $course['background_darkness'] ?? 0) }}%</output></div>
                             <input id="background_darkness" type="range" name="background_darkness" min="0" max="100" step="1" value="{{ old('background_darkness', $course['background_darkness'] ?? 0) }}" oninput="this.previousElementSibling.querySelector('output').value = this.value + '%'">
@@ -78,6 +117,38 @@
                             <input id="background_blur" type="range" name="background_blur" min="0" max="20" step="1" value="{{ old('background_blur', $course['background_blur'] ?? 0) }}" oninput="this.previousElementSibling.querySelector('output').value = this.value + 'px'">
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <div class="admin-background-panel admin-field-full">
+                <div class="admin-background-panel-header">
+                    <div>
+                        <h2>Course Poster Image</h2>
+                        <p class="admin-note">This image appears in the poster area between the course content and highlights.</p>
+                    </div>
+                    <span class="admin-background-chip">JPG · PNG · WEBP · GIF</span>
+                </div>
+                <div class="admin-field">
+                    <label for="poster_image_file">Upload Course Poster <span class="admin-note">(up to 20 MB)</span></label>
+                    <input id="poster_image_file" type="file" name="poster_image_file" class="admin-input" accept="image/jpeg,image/png,image/webp,image/gif">
+                    @error('poster_image_file')
+                        <p class="admin-error">{{ $message }}</p>
+                    @enderror
+                    @if (! empty($course['poster_image']))
+                        <p class="admin-note">Current: {{ $course['poster_image'] }}</p>
+                        <label class="admin-checkbox">
+                            <input type="checkbox" name="remove_poster_image" value="1">
+                            Remove current poster image
+                        </label>
+                    @endif
+                    <label for="poster_image_library" style="margin-top: 0.75rem;">Or choose from Media Library</label>
+                    <select id="poster_image_library" class="admin-select" onchange="document.querySelector('[name=poster_image]').value = this.value">
+                        <option value="" @selected(old('poster_image', $course['poster_image'] ?? '') === '')>No poster image</option>
+                        @foreach ($posterMedia as $media)
+                            <option value="{{ $media['path'] }}" @selected(old('poster_image', $course['poster_image'] ?? '') === $media['path'])>{{ $media['filename'] }}</option>
+                        @endforeach
+                    </select>
+                    <a href="{{ route('admin.media.index', ['directory' => 'course-posters']) }}" class="admin-note" style="display: inline-block; margin-top: 0.5rem;">Manage posters in Media Library</a>
                 </div>
             </div>
 

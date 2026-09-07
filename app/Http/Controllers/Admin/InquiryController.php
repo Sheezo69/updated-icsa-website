@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ContactMessage;
+use App\Support\InquiryMailer;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,7 +14,7 @@ class InquiryController extends Controller
 {
     public function index(Request $request): View
     {
-        $query = ContactMessage::query();
+        $query = ContactMessage::query()->with('emailAttempts');
 
         if ($status = $request->string('status')->toString()) {
             $query->where('status', $status);
@@ -73,6 +74,23 @@ class InquiryController extends Controller
         $inquiry->delete();
 
         return back()->with('success', 'Inquiry deleted.');
+    }
+
+    public function resend(Request $request, ContactMessage $inquiry, InquiryMailer $mailer): RedirectResponse
+    {
+        $data = $request->validate(['kind' => ['required', 'in:visitor,admin']]);
+        try {
+            $attempt = $mailer->send($inquiry, $data['kind']);
+        } catch (\Throwable $exception) {
+            report($exception);
+            return back()->with('error', 'Unable to record the email attempt. Check the server log before retrying.');
+        }
+        if (! $attempt) {
+            return back()->with('error', 'This email was just attempted or is being sent. Wait one minute before retrying.');
+        }
+        return $attempt->status === 'sent'
+            ? back()->with('success', 'Email accepted by the configured mail transport for '.$attempt->recipient.'.')
+            : back()->with('error', 'Email failed. Expand Email tracking for details.');
     }
 
     public function bulk(Request $request): RedirectResponse

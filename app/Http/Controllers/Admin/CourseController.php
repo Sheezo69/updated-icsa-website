@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Support\CourseFileRepository;
+use App\Support\MediaLibrary;
 use App\Support\YoutubeVideo;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -11,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -18,7 +20,11 @@ class CourseController extends Controller
 {
     public function index(Request $request, CourseFileRepository $courses): View
     {
-        $allCourses = $courses->all();
+        $allCourses = array_map(function (array $course): array {
+            $course['categories'] = $course['categories'] ?: $this->inferCategories($course);
+
+            return $course;
+        }, $courses->all());
         $search = trim($request->string('search')->toString());
 
         if ($search !== '') {
@@ -26,6 +32,7 @@ class CourseController extends Controller
             $allCourses = array_values(array_filter($allCourses, static function (array $course) use ($needle): bool {
                 return str_contains(mb_strtolower($course['title']), $needle)
                     || str_contains(mb_strtolower($course['badge']), $needle)
+                    || str_contains(mb_strtolower(implode(' ', $course['categories'])), $needle)
                     || str_contains(mb_strtolower($course['slug']), $needle);
             }));
         }
@@ -36,22 +43,26 @@ class CourseController extends Controller
         ]);
     }
 
-    public function create(): View
+    public function create(MediaLibrary $media): View
     {
         return view('admin.courses.edit', [
             'course' => $this->blankCourse(),
             'isEdit' => false,
+            'backgroundMedia' => $media->all('course-backgrounds'),
+            'posterMedia' => $media->all('course-posters'),
         ]);
     }
 
-    public function edit(string $slug, CourseFileRepository $courses): View
+    public function edit(string $slug, CourseFileRepository $courses, MediaLibrary $media): View
     {
         $course = $courses->find($slug);
         abort_if($course === null, 404);
 
         return view('admin.courses.edit', [
-            'course' => $course,
+            'course' => array_merge($course, ['categories' => $course['categories'] ?: $this->inferCategories($course)]),
             'isEdit' => true,
+            'backgroundMedia' => $media->all('course-backgrounds'),
+            'posterMedia' => $media->all('course-posters'),
         ]);
     }
 
@@ -82,7 +93,9 @@ class CourseController extends Controller
         $course = $courses->find($slug);
         if ($course) {
             $this->deletePublicMedia($course['video_thumbnail'] ?? '');
+            $this->deletePublicMedia($course['poster_image'] ?? '');
             $this->deletePublicMedia($course['background_image'] ?? '');
+            $this->deletePublicMedia($course['image'] ?? '');
         }
 
         $courses->delete($slug);
@@ -90,16 +103,41 @@ class CourseController extends Controller
         return redirect()->route('admin.courses.index')->with('success', 'Course deleted.');
     }
 
+    private function inferCategories(array $course): array
+    {
+        $text = Str::lower(implode(' ', [
+            $course['title'] ?? '',
+            $course['badge'] ?? '',
+        ]));
+
+        if (str_contains($text, 'diploma') || str_contains($text, 'uk')) {
+            return ['diploma'];
+        }
+
+        if (str_contains($text, 'english') || str_contains($text, 'ielts') || str_contains($text, 'arabic') || str_contains($text, 'airline') || str_contains($text, 'travel') || str_contains($text, 'language') || str_contains($text, 'professional')) {
+            return ['language'];
+        }
+
+        return ['it'];
+    }
+
     private function validatedCourse(Request $request): array
     {
         return $request->validate([
             'title' => ['required', 'string', 'max:255'],
+            'categories' => ['required', 'array', 'min:1', 'max:4'],
+            'categories.*' => [Rule::in(['it', 'diploma', 'language', 'nursing', 'design', 'short-skills'])],
             'badge' => ['nullable', 'string', 'max:100'],
             'duration' => ['nullable', 'string', 'max:100'],
             'certification' => ['nullable', 'string', 'max:100'],
             'diploma_type' => ['nullable', 'string', 'max:100'],
             'description' => ['nullable', 'string', 'max:1000'],
             'image' => ['nullable', 'string', 'max:255'],
+            'image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:20480'],
+            'remove_image' => ['nullable', 'boolean'],
+            'poster_image' => ['nullable', 'string', 'max:255'],
+            'poster_image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:20480'],
+            'remove_poster_image' => ['nullable', 'boolean'],
             'background_image' => ['nullable', 'string', 'max:255'],
             'background_image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:20480'],
             'remove_background_image' => ['nullable', 'boolean'],
@@ -133,12 +171,14 @@ class CourseController extends Controller
         return [
             'slug' => '',
             'title' => '',
+            'categories' => ['it'],
             'badge' => '',
             'duration' => '',
             'certification' => 'Certified',
             'diploma_type' => '',
             'description' => '',
             'image' => '',
+            'poster_image' => '',
             'background_image' => '',
             'background_darkness' => 0,
             'background_blur' => 0,
@@ -157,6 +197,30 @@ class CourseController extends Controller
     private function handleCourseThumbnailUpload(Request $request, array &$data): void
     {
         $slug = Str::slug((string) ($data['title'] ?? 'course')) ?: 'course';
+
+        if ($request->boolean('remove_image')) {
+            $this->deletePublicMedia($data['image'] ?? '');
+            $data['image'] = '';
+        }
+
+        if ($request->hasFile('image_file')) {
+            $oldPath = $data['image'] ?? '';
+            $newPath = $this->storePublicMedia($request->file('image_file'), 'course-covers', $slug, 'image_file');
+            $this->deletePublicMedia($oldPath);
+            $data['image'] = $newPath;
+        }
+
+        if ($request->boolean('remove_poster_image')) {
+            $this->deletePublicMedia($data['poster_image'] ?? '');
+            $data['poster_image'] = '';
+        }
+
+        if ($request->hasFile('poster_image_file')) {
+            $oldPath = $data['poster_image'] ?? '';
+            $newPath = $this->storePublicMedia($request->file('poster_image_file'), 'course-posters', $slug, 'poster_image_file');
+            $this->deletePublicMedia($oldPath);
+            $data['poster_image'] = $newPath;
+        }
 
         if ($request->boolean('remove_video_thumbnail')) {
             $this->deletePublicMedia($data['video_thumbnail'] ?? '');
@@ -186,6 +250,10 @@ class CourseController extends Controller
         $data['background_blur'] = (int) ($data['background_blur'] ?? 0);
 
         unset(
+            $data['image_file'],
+            $data['remove_image'],
+            $data['poster_image_file'],
+            $data['remove_poster_image'],
             $data['video_thumbnail_file'],
             $data['remove_video_thumbnail'],
             $data['background_image_file'],
@@ -193,7 +261,7 @@ class CourseController extends Controller
         );
     }
 
-    private function storePublicMedia($file, string $directory, string $slug): string
+    private function storePublicMedia($file, string $directory, string $slug, string $errorField = 'background_image_file'): string
     {
         $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension());
         $filename = $slug.'-'.Str::random(8).'.'.$extension;
@@ -206,13 +274,13 @@ class CourseController extends Controller
             report($exception);
 
             throw ValidationException::withMessages([
-                'background_image_file' => 'The image could not be saved. Check storage permissions and try again.',
+                $errorField => 'The image could not be saved. Check storage permissions and try again.',
             ]);
         }
 
         if (! is_string($path) || $path === '') {
             throw ValidationException::withMessages([
-                'background_image_file' => 'The image could not be saved. Check storage permissions and try again.',
+                $errorField => 'The image could not be saved. Check storage permissions and try again.',
             ]);
         }
 

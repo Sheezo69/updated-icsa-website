@@ -83,6 +83,12 @@
                         <td>{{ \Illuminate\Support\Str::limit($inquiry->message ?: 'No message body provided.', 140) }}</td>
                         <td>
                             <span class="admin-badge admin-badge-{{ $inquiry->status }}">{{ str_replace('_', ' ', $inquiry->status) }}</span>
+                            <div class="email-status-summary">
+                                @foreach (['visitor' => 'Visitor', 'admin' => 'Admin'] as $kind => $label)
+                                    @php($emailStatus = $inquiry->emailAttempts->firstWhere('kind', $kind)?->status ?? 'untracked')
+                                    <span class="email-pill email-pill-{{ $emailStatus }}">{{ $label }} · {{ $emailStatus === 'untracked' ? 'Not tracked' : ucfirst($emailStatus) }}</span>
+                                @endforeach
+                            </div>
                         </td>
                         <td>{{ optional($inquiry->created_at)->format('M d, Y H:i') }}</td>
                         <td>
@@ -104,6 +110,11 @@
                                     <button type="submit" class="admin-btn admin-btn-danger">Delete</button>
                                 </form>
                             </div>
+                        </td>
+                    </tr>
+                    <tr class="email-tracking-row">
+                        <td colspan="7">
+                            @include('admin.inquiries.email-tracking', ['inquiry' => $inquiry])
                         </td>
                     </tr>
                 @empty

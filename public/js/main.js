@@ -397,8 +397,50 @@ document.addEventListener('DOMContentLoaded', function() {
     // Course Filter on Courses Page
     const filterBtns = document.querySelectorAll('.filter-btn');
     const courseCards = document.querySelectorAll('.courses-grid .course-card');
+    const courseSearch = document.querySelector('#courseSearch');
+    const courseSearchStatus = document.querySelector('#courseSearchStatus');
+    const courseSearchEmpty = document.querySelector('#courseSearchEmpty');
 
-    if (filterBtns.length > 0) {
+    if (filterBtns.length > 0 || courseSearch) {
+        let activeFilter = 'all';
+
+        const normalize = (value) => String(value || '').toLowerCase().trim().replace(/\s+/g, ' ');
+        const words = (value) => normalize(value).split(/[^a-z0-9]+/).filter(Boolean);
+        const closeEnough = (queryWord, textWords) => {
+            if (queryWord.length < 4) return textWords.includes(queryWord);
+            const limit = Math.max(1, Math.floor(queryWord.length / 4));
+            return textWords.some(textWord => textWord.includes(queryWord) || Math.abs(textWord.length - queryWord.length) <= limit && levenshtein(queryWord, textWord) <= limit);
+        };
+        const levenshtein = (left, right) => {
+            const row = Array.from({ length: right.length + 1 }, (_, index) => index);
+            for (let i = 1; i <= left.length; i += 1) {
+                let previous = row[0];
+                row[0] = i;
+                for (let j = 1; j <= right.length; j += 1) {
+                    const current = row[j];
+                    row[j] = left[i - 1] === right[j - 1]
+                        ? previous
+                        : Math.min(previous + 1, row[j - 1] + 1, current + 1);
+                    previous = current;
+                }
+            }
+            return row[right.length];
+        };
+
+        const matchesSearch = (card, query) => {
+            const normalizedQuery = normalize(query);
+            if (!normalizedQuery) return true;
+            const searchableText = normalize(card.dataset.search);
+            if (searchableText.includes(normalizedQuery)) return true;
+            const textWords = words(searchableText);
+            return words(normalizedQuery).every(queryWord => closeEnough(queryWord, textWords));
+        };
+
+        const updateSearchStatus = (visibleCount, query) => {
+            if (!courseSearchStatus) return;
+            courseSearchStatus.textContent = query ? `${visibleCount} course${visibleCount === 1 ? '' : 's'} found` : '';
+        };
+
         const applyCourseFilter = (filter) => {
             // Remove active from all buttons
             filterBtns.forEach(b => {
@@ -411,16 +453,23 @@ document.addEventListener('DOMContentLoaded', function() {
             activeBtn.classList.add('active');
             activeBtn.setAttribute('aria-pressed', 'true');
 
-            const activeFilter = activeBtn.dataset.filter;
+            activeFilter = activeBtn.dataset.filter;
+            const query = courseSearch ? courseSearch.value : '';
+            let visibleCount = 0;
 
             courseCards.forEach(card => {
-                if (activeFilter === 'all' || card.dataset.category === activeFilter) {
+                const cardCategories = (card.dataset.category || '').split(',');
+                if ((activeFilter === 'all' || cardCategories.includes(activeFilter)) && matchesSearch(card, query)) {
                     card.style.display = '';
                     card.style.animation = 'fadeInUp 0.5s ease-out';
+                    visibleCount += 1;
                 } else {
                     card.style.display = 'none';
                 }
             });
+
+            updateSearchStatus(visibleCount, query);
+            if (courseSearchEmpty) courseSearchEmpty.hidden = visibleCount !== 0;
         };
 
         filterBtns.forEach(btn => {
@@ -428,6 +477,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 applyCourseFilter(btn.dataset.filter);
             });
         });
+
+        courseSearch?.addEventListener('input', () => applyCourseFilter(activeFilter));
 
         // Support direct category links like courses.html?category=it
         const categoryFromUrl = new URLSearchParams(window.location.search).get('category');

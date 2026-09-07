@@ -21,7 +21,16 @@
     <section class="admin-cards-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-top: 1rem;">
         @forelse ($courses as $course)
             <article class="admin-card">
-                <span class="admin-muted">{{ $course['badge'] ?: 'Uncategorized' }}</span>
+                <span class="admin-muted">
+                    {{ implode(' · ', array_map(static fn (string $category): string => match ($category) {
+                        'diploma' => 'UK Diploma Programs',
+                        'language' => 'Language & Professional',
+                        'nursing' => 'Nursing & Healthcare',
+                        'design' => 'Design & Multimedia',
+                        'short-skills' => 'Short Skill Courses',
+                        default => 'IT & Technical',
+                    }, $course['categories'] ?? ['it'])) }}
+                </span>
                 <h2 style="margin-top: 0.45rem;">{{ $course['title'] }}</h2>
                 <p class="admin-note">{{ $course['duration'] ?: 'Duration not set' }}</p>
                 <p class="admin-note">{{ $course['file_name'] }}</p>

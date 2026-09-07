@@ -48,10 +48,12 @@ class CourseFileRepository
         $content = File::get($path);
         preg_match('/<title>(.*?)\s*\|/is', $content, $titleMatch);
         preg_match('/<span class=["\']hero-label["\']>(.*?)<\/span>/is', $content, $badgeMatch);
+        preg_match('/<!--\s*course-categories?:\s*(.*?)\s*-->/is', $content, $categoryMatch);
         preg_match('/<h1>(.*?)<\/h1>/is', $content, $headingMatch);
         preg_match_all('/<span class=["\']course-detail-meta-item["\']><i class=["\']fas fa-.*?["\']><\/i>\s*([^<]+)/is', $content, $metaMatches);
         preg_match('/<p class=["\']course-detail-description["\']>(.*?)<\/p>/is', $content, $descriptionMatch);
         preg_match('/<!--\s*course-image:\s*(.*?)\s*-->/is', $content, $imageCommentMatch);
+        preg_match('/<!--\s*course-poster:\s*(.*?)\s*-->/is', $content, $posterCommentMatch);
         preg_match('/<!--\s*course-background:\s*(.*?)\s*-->/is', $content, $backgroundCommentMatch);
         preg_match('/<!--\s*course-background-darkness:\s*(.*?)\s*-->/is', $content, $backgroundDarknessMatch);
         preg_match('/<!--\s*course-background-blur:\s*(.*?)\s*-->/is', $content, $backgroundBlurMatch);
@@ -77,11 +79,13 @@ class CourseFileRepository
             'slug' => $slug,
             'title' => $this->cleanText($headingMatch[1] ?? $titleMatch[1] ?? 'Untitled Course'),
             'badge' => $this->cleanText($badgeMatch[1] ?? ''),
+            'categories' => $this->normalizeCategories($categoryMatch[1] ?? ''),
             'duration' => $this->cleanText($meta[0] ?? ''),
             'certification' => $this->cleanText($meta[1] ?? 'Certified'),
             'diploma_type' => $this->cleanText($meta[2] ?? ''),
             'description' => $this->cleanText($descriptionMatch[1] ?? ''),
             'image' => trim((string) ($imageCommentMatch[1] ?? $imageMatch[1] ?? '')),
+            'poster_image' => trim((string) ($posterCommentMatch[1] ?? '')),
             'background_image' => trim((string) ($backgroundCommentMatch[1] ?? '')),
             'background_darkness' => max(0, min(100, (int) ($backgroundDarknessMatch[1] ?? 0))),
             'background_blur' => max(0, min(20, (int) ($backgroundBlurMatch[1] ?? 0))),
@@ -141,6 +145,38 @@ class CourseFileRepository
         return File::delete($path);
     }
 
+    public function mediaUsage(string $mediaPath): array
+    {
+        $usage = [];
+
+        foreach (File::glob($this->directory().'/*.html') as $file) {
+            $content = File::get($file);
+            if (! str_contains($content, $mediaPath)) {
+                continue;
+            }
+
+            $course = $this->find(pathinfo($file, PATHINFO_FILENAME));
+            if ($course) {
+                $usage[] = [
+                    'slug' => $course['slug'],
+                    'title' => $course['title'],
+                ];
+            }
+        }
+
+        return $usage;
+    }
+
+    public function replaceMediaPath(string $oldPath, string $newPath): void
+    {
+        foreach (File::glob($this->directory().'/*.html') as $file) {
+            $content = File::get($file);
+            if (str_contains($content, $oldPath)) {
+                File::put($file, str_replace($oldPath, $newPath, $content));
+            }
+        }
+    }
+
     public function path(string $slug): string
     {
         return $this->directory().'/'.$this->normalizeSlug($slug).'.html';
@@ -196,16 +232,25 @@ class CourseFileRepository
         return implode("\n", $html);
     }
 
+    private function normalizeCategories(mixed $categories): array
+    {
+        $values = is_array($categories) ? $categories : (preg_split('/\s*,\s*/', trim((string) $categories)) ?: []);
+
+        return array_values(array_unique(array_filter($values, static fn (mixed $category): bool => in_array($category, ['it', 'diploma', 'language', 'nursing', 'design', 'short-skills'], true))));
+    }
+
     private function templateData(array $input, string $slug): array
     {
         return [
             'TITLE' => e((string) ($input['title'] ?? '')),
             'BADGE' => e((string) ($input['badge'] ?? '')),
+            'CATEGORIES' => e(implode(',', $this->normalizeCategories($input['categories'] ?? []))),
             'DURATION' => e((string) ($input['duration'] ?? '')),
             'CERTIFICATION' => e((string) ($input['certification'] ?? 'Certified')),
             'DIPLOMA_TYPE' => e((string) ($input['diploma_type'] ?? '')),
             'DESCRIPTION' => e((string) ($input['description'] ?? '')),
             'IMAGE' => e((string) ($input['image'] ?? '')),
+            'POSTER_IMAGE' => e((string) ($input['poster_image'] ?? '')),
             'BACKGROUND_IMAGE' => e((string) ($input['background_image'] ?? '')),
             'BACKGROUND_DARKNESS' => (string) max(0, min(100, (int) ($input['background_darkness'] ?? 0))),
             'BACKGROUND_BLUR' => (string) max(0, min(20, (int) ($input['background_blur'] ?? 0))),
@@ -300,6 +345,8 @@ class CourseFileRepository
 <body>
     {{HEADER}}
     <!-- course-image: {{IMAGE}} -->
+    <!-- course-poster: {{POSTER_IMAGE}} -->
+    <!-- course-categories: {{CATEGORIES}} -->
     <!-- course-background: {{BACKGROUND_IMAGE}} -->
     <!-- course-background-darkness: {{BACKGROUND_DARKNESS}} -->
     <!-- course-background-blur: {{BACKGROUND_BLUR}} -->

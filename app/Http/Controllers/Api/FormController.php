@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\ContactMessage;
 use App\Support\CourseFileRepository;
+use App\Support\InquiryMailer;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -30,6 +32,8 @@ class FormController extends Controller
         }
 
         if ($request->filled('website')) {
+            $this->logHoneypotAttempt($request, 'contact');
+
             return response()->json(['success' => true, 'message' => 'Contact message saved']);
         }
 
@@ -50,7 +54,7 @@ class FormController extends Controller
         }
 
         try {
-            ContactMessage::query()->create([
+            $contactMessage = ContactMessage::query()->create([
                 'name' => $this->trimmed($request->string('name')->toString(), 120),
                 'email' => $this->trimmed($request->string('email')->toString(), 190),
                 'phone' => $this->trimmed($request->string('phone')->toString(), 40),
@@ -58,7 +62,10 @@ class FormController extends Controller
                 'subject' => $this->nullableTrimmed($request->input('subject'), 60),
                 'message' => $this->nullableTrimmed($request->input('message'), 4000),
                 'status' => ContactMessage::STATUS_NEW,
+                'form_type' => 'Contact Form',
             ]);
+
+            app(InquiryMailer::class)->sendBoth($contactMessage);
         } catch (\Throwable $exception) {
             report($exception);
 
@@ -78,6 +85,8 @@ class FormController extends Controller
         }
 
         if ($request->filled('website')) {
+            $this->logHoneypotAttempt($request, 'course inquiry');
+
             return response()->json(['success' => true, 'message' => 'Inquiry saved']);
         }
 
@@ -97,7 +106,7 @@ class FormController extends Controller
         }
 
         try {
-            ContactMessage::query()->create([
+            $contactMessage = ContactMessage::query()->create([
                 'name' => $this->trimmed($request->string('name')->toString(), 120),
                 'email' => $this->trimmed($request->string('email')->toString(), 190),
                 'phone' => $this->trimmed($request->string('phone')->toString(), 40),
@@ -105,7 +114,10 @@ class FormController extends Controller
                 'subject' => null,
                 'message' => $this->nullableTrimmed($request->input('message'), 4000),
                 'status' => ContactMessage::STATUS_NEW,
+                'form_type' => 'Course Enrollment',
             ]);
+
+            app(InquiryMailer::class)->sendBoth($contactMessage);
         } catch (\Throwable $exception) {
             report($exception);
 
@@ -132,6 +144,15 @@ class FormController extends Controller
         RateLimiter::hit($key, $windowSeconds);
 
         return null;
+    }
+
+    private function logHoneypotAttempt(Request $request, string $form): void
+    {
+        Log::warning('Blocked honeypot form submission', [
+            'form' => $form,
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
     }
 
     private function allowedCourseValues(CourseFileRepository $courses, bool $allowEmpty = true): array
