@@ -223,8 +223,9 @@ window.validateContactForm = function(form) {
         return 'Please enter a valid email address.';
     }
 
-    if (!/^[0-9+()\-\s]{7,40}$/.test(phone)) {
-        return 'Please enter a valid phone number.';
+    const compactPhone = phone.replace(/[\s()\-]+/g, '');
+    if (!/^(?:\+?965)?(?:41[0-9]{6}|[569][0-9]{7})$/.test(compactPhone)) {
+        return 'Enter a Kuwait mobile number starting with 41, 5, 6, or 9.';
     }
 
     return '';

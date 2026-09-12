@@ -24,7 +24,7 @@ class InquiryEmailTrackingTest extends TestCase
     private function inquiry(): ContactMessage
     {
         return ContactMessage::create([
-            'name' => 'Test Visitor', 'email' => 'visitor@example.com', 'phone' => '12345678',
+            'name' => 'Test Visitor', 'email' => 'visitor@example.com', 'phone' => '50953314',
             'message' => 'Test inquiry', 'status' => 'new', 'form_type' => 'Contact Form',
         ]);
     }
@@ -34,7 +34,7 @@ class InquiryEmailTrackingTest extends TestCase
         $this->mock(CourseFileRepository::class)->shouldReceive('all')->andReturn([['slug' => 'python']]);
         foreach (['api.contact' => 'Contact Form', 'api.inquiry' => 'Course Enrollment'] as $route => $type) {
             $this->postJson(route($route), [
-                'name' => 'Test Visitor', 'email' => 'visitor@example.com', 'phone' => '12345678',
+                'name' => 'Test Visitor', 'email' => 'visitor@example.com', 'phone' => '50953314',
                 'course' => 'python', 'message' => 'Please contact me',
             ])->assertOk()->assertJson(['success' => true]);
             $inquiry = ContactMessage::latest('id')->first();
@@ -68,10 +68,41 @@ class InquiryEmailTrackingTest extends TestCase
         Mail::shouldReceive('to')->twice()->andReturnSelf();
         Mail::shouldReceive('send')->twice()->andThrow(new \RuntimeException('SMTP unavailable'));
         $this->postJson(route('api.contact'), [
-            'name' => 'Visitor', 'email' => 'visitor@example.com', 'phone' => '12345678',
+            'name' => 'Visitor', 'email' => 'visitor@example.com', 'phone' => '50953314',
         ])->assertOk()->assertJson(['success' => true]);
         $this->assertDatabaseCount('contact_messages', 1);
         $this->assertSame(2, ContactMessage::first()->emailAttempts()->where('status', 'failed')->count());
+    }
+
+    public function test_phone_numbers_accept_only_eight_digit_kuwait_formats_and_are_normalized(): void
+    {
+        $this->mock(CourseFileRepository::class)->shouldReceive('all')->andReturn([]);
+
+        foreach (['50953314', '96550953314', '+965 5095-3314'] as $phone) {
+            $this->postJson(route('api.contact'), [
+                'name' => 'Phone Test',
+                'email' => 'phone@example.com',
+                'phone' => $phone,
+            ])->assertOk()->assertJson(['success' => true]);
+        }
+
+        $this->assertSame(
+            ['+96550953314'],
+            ContactMessage::query()->pluck('phone')->unique()->values()->all(),
+        );
+
+        foreach (['5095331', '509533144', '+96650953314', '83886756'] as $index => $phone) {
+            $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.'.($index + 1)])
+                ->postJson(route('api.contact'), [
+                'name' => 'Invalid Phone',
+                'email' => 'invalid@example.com',
+                'phone' => $phone,
+                ])->assertUnprocessable()->assertJsonFragment([
+                    'message' => 'Enter a valid 8-digit Kuwait mobile number.',
+                ]);
+        }
+
+        $this->assertDatabaseCount('contact_messages', 3);
     }
 
     public function test_resend_keeps_history_uses_current_recipient_and_blocks_duplicates(): void
@@ -105,6 +136,44 @@ class InquiryEmailTrackingTest extends TestCase
         $this->post($url, ['kind' => 'invalid'])->assertSessionHasErrors('kind');
         $this->post($url, ['kind' => 'admin'])->assertSessionHas('success');
         $this->assertDatabaseCount('inquiry_email_attempts', 1);
+    }
+
+    public function test_inquiry_management_filters_assigns_and_exports_selected_rows(): void
+    {
+        $admin = Admin::create(['username' => 'tester', 'password_hash' => bcrypt('test-password'), 'role' => 'admin']);
+        $handler = Admin::create(['username' => 'handler', 'password_hash' => bcrypt('test-password'), 'role' => 'staff']);
+        $excel = ContactMessage::create([
+            'name' => 'Excel Student', 'email' => 'excel@example.com', 'phone' => '+965 5555 1234',
+            'course_interest' => 'Advanced Excel', 'message' => 'Excel question', 'status' => 'new',
+        ]);
+        $design = ContactMessage::create([
+            'name' => 'Design Student', 'email' => 'design@example.com', 'phone' => '+965 5555 9999',
+            'course_interest' => 'Web Design', 'message' => 'Design question', 'status' => 'resolved',
+        ]);
+
+        $this->withSession(['admin_id' => $admin->id])
+            ->get(route('admin.inquiries.index', ['search' => '5555 1234', 'course' => 'Advanced Excel']))
+            ->assertOk()
+            ->assertSee('Excel Student')
+            ->assertDontSee('Design Student')
+            ->assertSee('https://wa.me/96555551234', false);
+
+        $this->withSession(['admin_id' => $admin->id])
+            ->post(route('admin.inquiries.bulk'), [
+                'action' => 'bulk_assign',
+                'ids' => [$excel->id],
+                'assigned_admin' => $handler->id,
+            ])
+            ->assertSessionHas('success');
+
+        $this->assertSame($handler->id, $excel->fresh()->updated_by);
+        $this->assertNull($design->fresh()->updated_by);
+
+        $export = $this->withSession(['admin_id' => $admin->id])
+            ->get(route('admin.inquiries.export', ['ids' => [$excel->id]]));
+        $export->assertOk()->assertDownload();
+        $this->assertStringContainsString('Excel Student', $export->streamedContent());
+        $this->assertStringNotContainsString('Design Student', $export->streamedContent());
     }
 
     public function test_honeypot_creates_no_inquiries_or_email_attempts(): void

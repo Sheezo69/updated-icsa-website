@@ -58,25 +58,29 @@ Route::prefix($adminPrefix)->group(function (): void {
         Route::delete('/inquiries/{inquiry}', [InquiryController::class, 'destroy'])->name('admin.inquiries.destroy');
         Route::post('/inquiries/bulk', [InquiryController::class, 'bulk'])->name('admin.inquiries.bulk');
 
-        Route::get('/courses', [CourseController::class, 'index'])->name('admin.courses.index');
-        Route::get('/courses.php', fn () => redirect()->route('admin.courses.index'));
-        Route::get('/courses/create', [CourseController::class, 'create'])->name('admin.courses.create');
-        Route::get('/courses/{slug}/edit', [CourseController::class, 'edit'])->name('admin.courses.edit');
-        Route::get('/course-edit.php', function (Request $request) {
-            $slug = trim((string) $request->query('slug'));
+        Route::middleware('admin.permission:courses')->group(function (): void {
+            Route::get('/courses', [CourseController::class, 'index'])->name('admin.courses.index');
+            Route::get('/courses.php', fn () => redirect()->route('admin.courses.index'));
+            Route::get('/courses/create', [CourseController::class, 'create'])->name('admin.courses.create');
+            Route::get('/courses/{slug}/edit', [CourseController::class, 'edit'])->name('admin.courses.edit');
+            Route::get('/course-edit.php', function (Request $request) {
+                $slug = trim((string) $request->query('slug'));
 
-            return $slug !== ''
-                ? redirect()->route('admin.courses.edit', $slug)
-                : redirect()->route('admin.courses.create');
+                return $slug !== ''
+                    ? redirect()->route('admin.courses.edit', $slug)
+                    : redirect()->route('admin.courses.create');
+            });
+            Route::post('/courses', [CourseController::class, 'store'])->name('admin.courses.store');
+            Route::put('/courses/{slug}', [CourseController::class, 'update'])->name('admin.courses.update');
+            Route::delete('/courses/{slug}', [CourseController::class, 'destroy'])->name('admin.courses.destroy');
         });
-        Route::post('/courses', [CourseController::class, 'store'])->name('admin.courses.store');
-        Route::put('/courses/{slug}', [CourseController::class, 'update'])->name('admin.courses.update');
-        Route::delete('/courses/{slug}', [CourseController::class, 'destroy'])->name('admin.courses.destroy');
 
-        Route::get('/media', [MediaController::class, 'index'])->name('admin.media.index');
-        Route::post('/media', [MediaController::class, 'store'])->name('admin.media.store');
-        Route::post('/media/rename', [MediaController::class, 'rename'])->name('admin.media.rename');
-        Route::delete('/media', [MediaController::class, 'destroy'])->name('admin.media.destroy');
+        Route::middleware('admin.permission:media')->group(function (): void {
+            Route::get('/media', [MediaController::class, 'index'])->name('admin.media.index');
+            Route::post('/media', [MediaController::class, 'store'])->name('admin.media.store');
+            Route::post('/media/rename', [MediaController::class, 'rename'])->name('admin.media.rename');
+            Route::delete('/media', [MediaController::class, 'destroy'])->name('admin.media.destroy');
+        });
 
         Route::get('/settings', [SettingsController::class, 'edit'])->name('admin.settings.edit');
         Route::get('/settings.php', fn () => redirect()->route('admin.settings.edit'));
@@ -88,6 +92,7 @@ Route::prefix($adminPrefix)->group(function (): void {
             Route::post('/users', [UserController::class, 'store'])->name('admin.users.store');
             Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('admin.users.destroy');
             Route::put('/users/{user}/password', [UserController::class, 'resetPassword'])->name('admin.users.password');
+            Route::put('/users/{user}/permissions', [UserController::class, 'updatePermissions'])->name('admin.users.permissions');
         });
     });
 });

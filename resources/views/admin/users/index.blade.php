@@ -35,6 +35,21 @@
                     </select>
                 </div>
 
+                <fieldset class="admin-field admin-field-full admin-permission-fieldset">
+                    <legend>Staff access</legend>
+                    <p class="admin-note">These permissions apply only when the role is Staff.</p>
+                    <div class="admin-permission-options">
+                        <label class="admin-checkbox">
+                            <input type="checkbox" name="can_manage_courses" value="1" @checked(old('can_manage_courses'))>
+                            Manage Courses
+                        </label>
+                        <label class="admin-checkbox">
+                            <input type="checkbox" name="can_manage_media" value="1" @checked(old('can_manage_media'))>
+                            Manage Media Library
+                        </label>
+                    </div>
+                </fieldset>
+
                 <div class="admin-actions admin-field-full">
                     <button type="submit" class="admin-btn admin-btn-primary">Create User</button>
                 </div>
@@ -46,7 +61,7 @@
             <div class="admin-mini-list" style="margin-top: 1rem;">
                 <div class="admin-mini-item">
                     <strong>Roles</strong>
-                    <p class="admin-note">Admins can manage users. Staff can handle inquiries, settings, and courses.</p>
+                    <p class="admin-note">Admins always have full access. Staff can access Courses and Media Library only when you grant those permissions.</p>
                 </div>
                 <div class="admin-mini-item">
                     <strong>Password resets</strong>
@@ -62,6 +77,7 @@
                 <tr>
                     <th>User</th>
                     <th>Role</th>
+                    <th>Section Access</th>
                     <th>Last Login</th>
                     <th>Created</th>
                     <th>Reset Password</th>
@@ -77,6 +93,25 @@
                         </td>
                         <td>
                             <span class="admin-badge admin-badge-{{ $user->role }}">{{ $user->role }}</span>
+                        </td>
+                        <td>
+                            @if ($user->isOwner())
+                                <span class="admin-badge admin-badge-admin">Full access</span>
+                            @else
+                                <form method="POST" action="{{ route('admin.users.permissions', $user) }}" class="admin-permission-form">
+                                    @csrf
+                                    @method('PUT')
+                                    <label class="admin-checkbox">
+                                        <input type="checkbox" name="can_manage_courses" value="1" @checked($user->can_manage_courses)>
+                                        Courses
+                                    </label>
+                                    <label class="admin-checkbox">
+                                        <input type="checkbox" name="can_manage_media" value="1" @checked($user->can_manage_media)>
+                                        Media
+                                    </label>
+                                    <button type="submit" class="admin-btn admin-btn-secondary">Save Access</button>
+                                </form>
+                            @endif
                         </td>
                         <td>{{ optional($user->last_login)->format('M d, Y H:i') ?: 'Never' }}</td>
                         <td>{{ optional($user->created_at)->format('M d, Y') }}</td>

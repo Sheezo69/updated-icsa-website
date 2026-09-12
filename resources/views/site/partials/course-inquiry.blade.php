@@ -24,7 +24,7 @@
                         <div class='form-group'><label class='form-label'>Email Address *</label><input type='email' class='form-input' name='email' required></div>
                     </div>
                     <div class='form-row'>
-                        <div class='form-group'><label class='form-label'>Phone Number *</label><input type='text' class='form-input' name='phone' inputmode='tel' required></div>
+                        <div class='form-group'><label class='form-label'>Phone Number *</label><input type='text' class='form-input' name='phone' inputmode='tel' autocomplete='tel' maxlength='18' placeholder='+965 50953314' title='Enter a Kuwait mobile number starting with 41, 5, 6, or 9' required></div>
                         <div class='form-group'>
                             <label class='form-label'>Course *</label>
                             <input type='text' class='form-input' value='{{ $course['title'] }}' readonly aria-label='Selected course'>

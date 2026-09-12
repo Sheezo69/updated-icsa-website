@@ -37,13 +37,19 @@ class FormController extends Controller
             return response()->json(['success' => true, 'message' => 'Contact message saved']);
         }
 
-        $validator = Validator::make($request->all(), [
+        $phone = $this->normalizeKuwaitPhone($request->string('phone')->toString());
+        $input = array_merge($request->all(), ['phone' => $phone]);
+
+        $validator = Validator::make($input, [
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email:rfc', 'max:190'],
-            'phone' => ['required', 'regex:/^[0-9+()\-\s]{7,40}$/'],
+            'phone' => ['required', 'regex:/^\+965(?:41[0-9]{6}|[569][0-9]{7})$/'],
             'course' => ['nullable', 'string', Rule::in($this->allowedCourseValues($courses))],
             'subject' => ['nullable', 'string', Rule::in(['general', 'enrollment', 'pricing', 'schedule', 'other'])],
             'message' => ['nullable', 'string', 'max:4000'],
+        ], [
+            'phone.required' => 'Enter a valid 8-digit Kuwait mobile number.',
+            'phone.regex' => 'Enter a Kuwait mobile number starting with 41, 5, 6, or 9.',
         ]);
 
         if ($validator->fails()) {
@@ -57,7 +63,7 @@ class FormController extends Controller
             $contactMessage = ContactMessage::query()->create([
                 'name' => $this->trimmed($request->string('name')->toString(), 120),
                 'email' => $this->trimmed($request->string('email')->toString(), 190),
-                'phone' => $this->trimmed($request->string('phone')->toString(), 40),
+                'phone' => $phone,
                 'course_interest' => $this->nullableTrimmed($request->input('course'), 120),
                 'subject' => $this->nullableTrimmed($request->input('subject'), 60),
                 'message' => $this->nullableTrimmed($request->input('message'), 4000),
@@ -90,12 +96,18 @@ class FormController extends Controller
             return response()->json(['success' => true, 'message' => 'Inquiry saved']);
         }
 
-        $validator = Validator::make($request->all(), [
+        $phone = $this->normalizeKuwaitPhone($request->string('phone')->toString());
+        $input = array_merge($request->all(), ['phone' => $phone]);
+
+        $validator = Validator::make($input, [
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email:rfc', 'max:190'],
-            'phone' => ['required', 'regex:/^[0-9+()\-\s]{7,40}$/'],
+            'phone' => ['required', 'regex:/^\+965(?:41[0-9]{6}|[569][0-9]{7})$/'],
             'course' => ['required', 'string', Rule::in($this->allowedCourseValues($courses, false))],
             'message' => ['nullable', 'string', 'max:4000'],
+        ], [
+            'phone.required' => 'Enter a valid 8-digit Kuwait mobile number.',
+            'phone.regex' => 'Enter a Kuwait mobile number starting with 41, 5, 6, or 9.',
         ]);
 
         if ($validator->fails()) {
@@ -109,7 +121,7 @@ class FormController extends Controller
             $contactMessage = ContactMessage::query()->create([
                 'name' => $this->trimmed($request->string('name')->toString(), 120),
                 'email' => $this->trimmed($request->string('email')->toString(), 190),
-                'phone' => $this->trimmed($request->string('phone')->toString(), 40),
+                'phone' => $phone,
                 'course_interest' => $this->trimmed((string) $request->input('course'), 120),
                 'subject' => null,
                 'message' => $this->nullableTrimmed($request->input('message'), 4000),
@@ -165,6 +177,21 @@ class FormController extends Controller
     private function trimmed(string $value, int $maxLength): string
     {
         return mb_substr(trim($value), 0, $maxLength);
+    }
+
+    private function normalizeKuwaitPhone(string $value): ?string
+    {
+        $compact = preg_replace('/[\s()\-]+/', '', trim($value));
+
+        if (preg_match('/^(?:41[0-9]{6}|[569][0-9]{7})$/', $compact)) {
+            return '+965'.$compact;
+        }
+
+        if (preg_match('/^\+?965(41[0-9]{6}|[569][0-9]{7})$/', $compact, $matches)) {
+            return '+965'.$matches[1];
+        }
+
+        return null;
     }
 
     private function nullableTrimmed(mixed $value, int $maxLength): ?string

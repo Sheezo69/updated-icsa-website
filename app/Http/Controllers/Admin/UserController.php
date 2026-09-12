@@ -26,6 +26,8 @@ class UserController extends Controller
             'email' => ['nullable', 'email:rfc', 'max:190'],
             'password' => ['required', 'string', 'min:6'],
             'role' => ['required', 'in:admin,staff'],
+            'can_manage_courses' => ['nullable', 'boolean'],
+            'can_manage_media' => ['nullable', 'boolean'],
         ]);
 
         Admin::query()->create([
@@ -33,6 +35,8 @@ class UserController extends Controller
             'email' => $data['email'] ?: null,
             'password_hash' => Hash::make($data['password']),
             'role' => $data['role'],
+            'can_manage_courses' => $data['role'] === Admin::ROLE_STAFF && (bool) ($data['can_manage_courses'] ?? false),
+            'can_manage_media' => $data['role'] === Admin::ROLE_STAFF && (bool) ($data['can_manage_media'] ?? false),
             'login_attempts' => 0,
         ]);
 
@@ -63,5 +67,24 @@ class UserController extends Controller
         ]);
 
         return back()->with('success', 'Password reset successfully.');
+    }
+
+    public function updatePermissions(Request $request, Admin $user): RedirectResponse
+    {
+        if ($user->isOwner()) {
+            return back()->with('error', 'Administrator accounts always have full access.');
+        }
+
+        $data = $request->validate([
+            'can_manage_courses' => ['nullable', 'boolean'],
+            'can_manage_media' => ['nullable', 'boolean'],
+        ]);
+
+        $user->update([
+            'can_manage_courses' => (bool) ($data['can_manage_courses'] ?? false),
+            'can_manage_media' => (bool) ($data['can_manage_media'] ?? false),
+        ]);
+
+        return back()->with('success', 'Staff permissions updated.');
     }
 }

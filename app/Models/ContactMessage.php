@@ -36,4 +36,9 @@ class ContactMessage extends Model
     {
         return $this->hasMany(InquiryEmailAttempt::class)->latest('id');
     }
+
+    public function updatedBy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Admin::class, 'updated_by');
+    }
 }

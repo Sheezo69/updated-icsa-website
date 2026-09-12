@@ -21,6 +21,8 @@ class Admin extends Model
         'login_attempts',
         'locked_until',
         'role',
+        'can_manage_courses',
+        'can_manage_media',
     ];
 
     protected $hidden = [
@@ -32,11 +34,26 @@ class Admin extends Model
         'locked_until' => 'datetime',
         'created_at' => 'datetime',
         'login_attempts' => 'integer',
+        'can_manage_courses' => 'boolean',
+        'can_manage_media' => 'boolean',
     ];
 
     public function isOwner(): bool
     {
         return $this->role === self::ROLE_ADMIN;
+    }
+
+    public function canAccess(string $permission): bool
+    {
+        if ($this->isOwner()) {
+            return true;
+        }
+
+        return match ($permission) {
+            'courses' => $this->can_manage_courses,
+            'media' => $this->can_manage_media,
+            default => false,
+        };
     }
 
     public function isLocked(): bool

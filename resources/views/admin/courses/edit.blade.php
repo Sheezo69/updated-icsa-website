@@ -103,7 +103,9 @@
                                 <option value="{{ $media['path'] }}" @selected(old('background_image', $course['background_image'] ?? '') === $media['path'])>{{ $media['filename'] }}</option>
                             @endforeach
                         </select>
-                        <a href="{{ route('admin.media.index', ['directory' => 'course-backgrounds']) }}" class="admin-note" style="display: inline-block; margin-top: 0.5rem;">Manage images in Media Library</a>
+                        @if (($currentAdmin ?? null)?->canAccess('media'))
+                            <a href="{{ route('admin.media.index', ['directory' => 'course-backgrounds']) }}" class="admin-note" style="display: inline-block; margin-top: 0.5rem;">Manage images in Media Library</a>
+                        @endif
                     </div>
 
                     <div class="admin-background-controls">
@@ -148,7 +150,9 @@
                             <option value="{{ $media['path'] }}" @selected(old('poster_image', $course['poster_image'] ?? '') === $media['path'])>{{ $media['filename'] }}</option>
                         @endforeach
                     </select>
-                    <a href="{{ route('admin.media.index', ['directory' => 'course-posters']) }}" class="admin-note" style="display: inline-block; margin-top: 0.5rem;">Manage posters in Media Library</a>
+                    @if (($currentAdmin ?? null)?->canAccess('media'))
+                        <a href="{{ route('admin.media.index', ['directory' => 'course-posters']) }}" class="admin-note" style="display: inline-block; margin-top: 0.5rem;">Manage posters in Media Library</a>
+                    @endif
                 </div>
             </div>
 

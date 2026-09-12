@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\AuthenticateAdmin;
+use App\Http\Middleware\EnsureAdminPermission;
 use App\Http\Middleware\EnsureAdminOwner;
 use App\Http\Middleware\RedirectIfAdminAuthenticated;
 
@@ -17,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin.auth' => AuthenticateAdmin::class,
             'admin.owner' => EnsureAdminOwner::class,
+            'admin.permission' => EnsureAdminPermission::class,
             'admin.guest' => RedirectIfAdminAuthenticated::class,
         ]);
     })

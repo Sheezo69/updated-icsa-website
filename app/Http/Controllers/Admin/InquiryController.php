@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Admin;
 use App\Models\ContactMessage;
 use App\Support\InquiryMailer;
 use Illuminate\Contracts\View\View;
@@ -14,7 +15,7 @@ class InquiryController extends Controller
 {
     public function index(Request $request): View
     {
-        $query = ContactMessage::query()->with('emailAttempts');
+        $query = ContactMessage::query()->with(['emailAttempts', 'updatedBy']);
 
         if ($status = $request->string('status')->toString()) {
             $query->where('status', $status);
@@ -25,8 +26,13 @@ class InquiryController extends Controller
                 $builder
                     ->where('name', 'like', '%'.$search.'%')
                     ->orWhere('email', 'like', '%'.$search.'%')
+                    ->orWhere('phone', 'like', '%'.$search.'%')
                     ->orWhere('message', 'like', '%'.$search.'%');
             });
+        }
+
+        if ($course = $request->string('course')->toString()) {
+            $query->where('course_interest', $course);
         }
 
         if ($dateFrom = $request->string('date_from')->toString()) {
@@ -43,6 +49,7 @@ class InquiryController extends Controller
             ->withQueryString();
 
         $stats = [
+            'total' => ContactMessage::query()->count(),
             ContactMessage::STATUS_NEW => ContactMessage::query()->where('status', ContactMessage::STATUS_NEW)->count(),
             ContactMessage::STATUS_IN_PROGRESS => ContactMessage::query()->where('status', ContactMessage::STATUS_IN_PROGRESS)->count(),
             ContactMessage::STATUS_RESOLVED => ContactMessage::query()->where('status', ContactMessage::STATUS_RESOLVED)->count(),
@@ -51,7 +58,14 @@ class InquiryController extends Controller
         return view('admin.inquiries.index', [
             'inquiries' => $inquiries,
             'stats' => $stats,
-            'filters' => $request->only(['status', 'search', 'date_from', 'date_to']),
+            'filters' => $request->only(['status', 'course', 'search', 'date_from', 'date_to']),
+            'courses' => ContactMessage::query()
+                ->whereNotNull('course_interest')
+                ->where('course_interest', '!=', '')
+                ->distinct()
+                ->orderBy('course_interest')
+                ->pluck('course_interest'),
+            'admins' => Admin::query()->orderBy('username')->get(['id', 'username']),
         ]);
     }
 
@@ -96,10 +110,11 @@ class InquiryController extends Controller
     public function bulk(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'action' => ['required', 'in:bulk_delete,bulk_status'],
+            'action' => ['required', 'in:bulk_delete,bulk_status,bulk_assign'],
             'ids' => ['required', 'array', 'min:1'],
             'ids.*' => ['integer'],
-            'bulk_status' => ['nullable', 'in:new,in_progress,resolved,archived'],
+            'bulk_status' => ['nullable', 'required_if:action,bulk_status', 'in:new,in_progress,resolved,archived'],
+            'assigned_admin' => ['nullable', 'required_if:action,bulk_assign', 'integer', 'exists:admins,id'],
         ]);
 
         $query = ContactMessage::query()->whereIn('id', $data['ids']);
@@ -108,6 +123,12 @@ class InquiryController extends Controller
             $query->delete();
 
             return back()->with('success', 'Selected inquiries deleted.');
+        }
+
+        if ($data['action'] === 'bulk_assign') {
+            $query->update(['updated_by' => $data['assigned_admin']]);
+
+            return back()->with('success', 'Selected inquiries assigned.');
         }
 
         $query->update([
@@ -131,8 +152,17 @@ class InquiryController extends Controller
                 $builder
                     ->where('name', 'like', '%'.$search.'%')
                     ->orWhere('email', 'like', '%'.$search.'%')
+                    ->orWhere('phone', 'like', '%'.$search.'%')
                     ->orWhere('message', 'like', '%'.$search.'%');
             });
+        }
+
+        if ($course = $request->string('course')->toString()) {
+            $query->where('course_interest', $course);
+        }
+
+        if ($ids = array_filter(array_map('intval', (array) $request->input('ids', [])))) {
+            $query->whereIn('id', $ids);
         }
 
         if ($dateFrom = $request->string('date_from')->toString()) {

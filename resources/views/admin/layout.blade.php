@@ -28,13 +28,20 @@
                 </a>
                 <a href="{{ route('admin.inquiries.index') }}" class="admin-sidebar-link {{ request()->routeIs('admin.inquiries.*') ? 'is-active' : '' }}">
                     <i class="fas fa-envelope"></i> Inquiries
+                    @if (request()->routeIs('admin.inquiries.*') && isset($stats['total']))
+                        <span class="admin-sidebar-count">{{ $stats['total'] }}</span>
+                    @endif
                 </a>
-                <a href="{{ route('admin.courses.index') }}" class="admin-sidebar-link {{ request()->routeIs('admin.courses.*') ? 'is-active' : '' }}">
-                    <i class="fas fa-graduation-cap"></i> Courses
-                </a>
-                <a href="{{ route('admin.media.index') }}" class="admin-sidebar-link {{ request()->routeIs('admin.media.*') ? 'is-active' : '' }}">
-                    <i class="fas fa-images"></i> Media Library
-                </a>
+                @if (($currentAdmin ?? null)?->canAccess('courses'))
+                    <a href="{{ route('admin.courses.index') }}" class="admin-sidebar-link {{ request()->routeIs('admin.courses.*') ? 'is-active' : '' }}">
+                        <i class="fas fa-graduation-cap"></i> Courses
+                    </a>
+                @endif
+                @if (($currentAdmin ?? null)?->canAccess('media'))
+                    <a href="{{ route('admin.media.index') }}" class="admin-sidebar-link {{ request()->routeIs('admin.media.*') ? 'is-active' : '' }}">
+                        <i class="fas fa-images"></i> Media Library
+                    </a>
+                @endif
                 @if (($currentAdmin ?? null)?->isOwner())
                     <a href="{{ route('admin.users.index') }}" class="admin-sidebar-link {{ request()->routeIs('admin.users.*') ? 'is-active' : '' }}">
                         <i class="fas fa-users"></i> Users
@@ -60,9 +67,14 @@
 
         <main class="admin-main">
             <div class="admin-topbar">
-                <div>
-                    <h1>@yield('title')</h1>
-                    <p>@yield('subtitle')</p>
+                <div class="admin-page-heading">
+                    @hasSection('title_icon')
+                        <span class="admin-page-heading-icon"><i class="@yield('title_icon')" aria-hidden="true"></i></span>
+                    @endif
+                    <div>
+                        <h1>@yield('title')</h1>
+                        <p>@yield('subtitle')</p>
+                    </div>
                 </div>
 
                 @if (($currentAdmin ?? null))
