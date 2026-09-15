@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Support\AdminActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -16,7 +17,7 @@ class AuthController extends Controller
         return view('admin.login');
     }
 
-    public function login(Request $request): RedirectResponse
+    public function login(Request $request, AdminActivityLogger $audit): RedirectResponse
     {
         $credentials = $request->validate([
             'username' => ['required', 'string'],
@@ -56,13 +57,16 @@ class AuthController extends Controller
             'admin_role' => $admin->role,
         ]);
 
+        $audit->record($request, 'authentication.login', 'authentication', 'Signed in to the admin panel.', Admin::class, $admin->id, $admin->username, null, ['status' => 'authenticated'], $admin);
+
         $intended = $request->session()->pull('admin_intended', route('admin.dashboard'));
 
         return redirect()->to($intended);
     }
 
-    public function logout(Request $request): RedirectResponse
+    public function logout(Request $request, AdminActivityLogger $audit): RedirectResponse
     {
+        $audit->record($request, 'authentication.logout', 'authentication', 'Signed out of the admin panel.', Admin::class, $request->session()->get('admin_id'), $request->attributes->get('currentAdmin')?->username);
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

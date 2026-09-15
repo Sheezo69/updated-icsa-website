@@ -5,12 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\AdminConversation;
+use App\Support\AdminActivityLogger;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -35,7 +36,7 @@ class SettingsController extends Controller
         ]);
     }
 
-    public function updateProfile(Request $request): RedirectResponse
+    public function updateProfile(Request $request, AdminActivityLogger $audit): RedirectResponse
     {
         /** @var Admin $admin */
         $admin = $request->attributes->get('currentAdmin');
@@ -48,6 +49,7 @@ class SettingsController extends Controller
 
         $oldUsername = $admin->username;
         $oldAvatar = $admin->avatar_path;
+        $before = $this->profileSnapshot($admin);
         $avatarPath = $oldAvatar;
 
         if ($request->boolean('remove_avatar')) {
@@ -91,11 +93,12 @@ class SettingsController extends Controller
         if ($oldAvatar && $oldAvatar !== $avatarPath && str_starts_with($oldAvatar, 'uploads/admin-avatars/')) {
             File::delete(public_path($oldAvatar));
         }
+        $audit->record($request, 'settings.profile_updated', 'settings', 'Updated profile information.', Admin::class, $admin->id, $admin->username, $before, $this->profileSnapshot($admin->fresh()));
 
         return redirect()->route('admin.settings.edit', ['tab' => 'profile'])->with('success', 'Profile updated successfully.');
     }
 
-    public function updatePassword(Request $request): RedirectResponse
+    public function updatePassword(Request $request, AdminActivityLogger $audit): RedirectResponse
     {
         /** @var Admin|null $admin */
         $admin = $request->attributes->get('currentAdmin');
@@ -114,11 +117,12 @@ class SettingsController extends Controller
         $admin->update([
             'password_hash' => Hash::make($data['new_password']),
         ]);
+        $audit->record($request, 'settings.password_changed', 'settings', 'Changed their own account password.', Admin::class, $admin->id, $admin->username);
 
         return redirect()->route('admin.settings.edit', ['tab' => 'security'])->with('success', 'Password updated successfully.');
     }
 
-    public function updateNotifications(Request $request): RedirectResponse
+    public function updateNotifications(Request $request, AdminActivityLogger $audit): RedirectResponse
     {
         /** @var Admin $admin */
         $admin = $request->attributes->get('currentAdmin');
@@ -128,16 +132,18 @@ class SettingsController extends Controller
             'notify_messages' => ['nullable', 'boolean'],
         ]);
 
+        $before = $this->notificationSnapshot($admin);
         $admin->update([
             'notify_email' => (bool) ($data['notify_email'] ?? false),
             'notify_inquiries' => (bool) ($data['notify_inquiries'] ?? false),
             'notify_messages' => (bool) ($data['notify_messages'] ?? false),
         ]);
+        $audit->record($request, 'settings.notifications_updated', 'settings', 'Updated notification preferences.', Admin::class, $admin->id, $admin->username, $before, $this->notificationSnapshot($admin));
 
         return redirect()->route('admin.settings.edit', ['tab' => 'notifications'])->with('success', 'Notification preferences saved.');
     }
 
-    public function updatePreferences(Request $request): RedirectResponse
+    public function updatePreferences(Request $request, AdminActivityLogger $audit): RedirectResponse
     {
         /** @var Admin $admin */
         $admin = $request->attributes->get('currentAdmin');
@@ -146,8 +152,24 @@ class SettingsController extends Controller
             'language' => ['required', Rule::in(array_keys(Admin::LANGUAGES))],
         ]);
 
+        $before = ['timezone' => $admin->timezone, 'language' => $admin->language];
         $admin->update($data);
+        $audit->record($request, 'settings.preferences_updated', 'settings', 'Updated system preferences.', Admin::class, $admin->id, $admin->username, $before, ['timezone' => $admin->timezone, 'language' => $admin->language]);
 
         return redirect()->route('admin.settings.edit', ['tab' => 'system'])->with('success', 'System preferences saved.');
+    }
+
+    private function profileSnapshot(Admin $admin): array
+    {
+        return ['username' => $admin->username, 'email' => $admin->email, 'avatar_path' => $admin->avatar_path];
+    }
+
+    private function notificationSnapshot(Admin $admin): array
+    {
+        return [
+            'notify_email' => (bool) $admin->notify_email,
+            'notify_inquiries' => (bool) $admin->notify_inquiries,
+            'notify_messages' => (bool) $admin->notify_messages,
+        ];
     }
 }

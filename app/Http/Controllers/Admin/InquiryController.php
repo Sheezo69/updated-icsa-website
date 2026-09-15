@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\ContactMessage;
+use App\Support\AdminActivityLogger;
 use App\Support\InquiryMailer;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -75,49 +76,62 @@ class InquiryController extends Controller
         ]);
     }
 
-    public function update(Request $request, ContactMessage $inquiry): RedirectResponse
+    public function update(Request $request, ContactMessage $inquiry, AdminActivityLogger $audit): RedirectResponse
     {
         $data = $request->validate([
             'status' => ['required', 'in:new,in_progress,resolved,archived'],
         ]);
 
+        $before = ['status' => $inquiry->status];
         $inquiry->update([
             'status' => $data['status'],
             'updated_by' => (int) $request->session()->get('admin_id'),
         ]);
+        $audit->record($request, 'inquiry.status_changed', 'inquiries', 'Changed the inquiry status.', ContactMessage::class, $inquiry->id, '#'.$inquiry->id.' '.$inquiry->name, $before, ['status' => $inquiry->status]);
 
         return back()->with('success', 'Inquiry updated.');
     }
 
-    public function destroy(ContactMessage $inquiry): RedirectResponse
+    public function destroy(Request $request, ContactMessage $inquiry, AdminActivityLogger $audit): RedirectResponse
     {
+        $before = $this->inquirySnapshot($inquiry);
+        $label = '#'.$inquiry->id.' '.$inquiry->name;
+        $id = $inquiry->id;
         $inquiry->delete();
+        $audit->record($request, 'inquiry.deleted', 'inquiries', 'Deleted an inquiry.', ContactMessage::class, $id, $label, $before);
 
         return back()->with('success', 'Inquiry deleted.');
     }
 
-    public function resend(Request $request, ContactMessage $inquiry, InquiryMailer $mailer): RedirectResponse
+    public function resend(Request $request, ContactMessage $inquiry, InquiryMailer $mailer, AdminActivityLogger $audit): RedirectResponse
     {
         $data = $request->validate(['kind' => ['required', 'in:visitor,admin']]);
         try {
             $attempt = $mailer->send($inquiry, $data['kind']);
         } catch (\Throwable $exception) {
             report($exception);
+
             return back()->with('error', 'Unable to record the email attempt. Check the server log before retrying.');
         }
         if (! $attempt) {
             return back()->with('error', 'This email was just attempted or is being sent. Wait one minute before retrying.');
         }
+        $audit->record($request, 'inquiry.email_resent', 'inquiries', 'Retried the '.$data['kind'].' inquiry email.', ContactMessage::class, $inquiry->id, '#'.$inquiry->id.' '.$inquiry->name, null, [
+            'email_kind' => $data['kind'],
+            'recipient' => $attempt->recipient,
+            'delivery_status' => $attempt->status,
+        ]);
+
         return $attempt->status === 'sent'
             ? back()->with('success', 'Email accepted by the configured mail transport for '.$attempt->recipient.'.')
             : back()->with('error', 'Email failed. Expand Email tracking for details.');
     }
 
-    public function bulk(Request $request): RedirectResponse
+    public function bulk(Request $request, AdminActivityLogger $audit): RedirectResponse
     {
         $data = $request->validate([
             'action' => ['required', 'in:bulk_delete,bulk_status,bulk_assign'],
-            'ids' => ['required', 'array', 'min:1'],
+            'ids' => ['required', 'array', 'min:1', 'max:200'],
             'ids.*' => ['integer'],
             'bulk_status' => ['nullable', 'required_if:action,bulk_status', 'in:new,in_progress,resolved,archived'],
             'assigned_admin' => [
@@ -129,9 +143,12 @@ class InquiryController extends Controller
         ]);
 
         $query = ContactMessage::query()->whereIn('id', $data['ids']);
+        $items = (clone $query)->get()->map(fn (ContactMessage $inquiry): array => $this->inquirySnapshot($inquiry))->values()->all();
+        $ids = array_column($items, 'id');
 
         if ($data['action'] === 'bulk_delete') {
             $query->delete();
+            $audit->record($request, 'inquiry.deleted', 'inquiries', 'Deleted '.count($items).' selected inquiries.', ContactMessage::class, implode(',', $ids), count($items).' inquiries', ['items' => $items]);
 
             return back()->with('success', 'Selected inquiries deleted.');
         }
@@ -141,6 +158,8 @@ class InquiryController extends Controller
                 'assigned_to' => $data['assigned_admin'],
                 'updated_by' => (int) $request->session()->get('admin_id'),
             ]);
+            $after = (clone $query)->get()->map(fn (ContactMessage $inquiry): array => $this->inquirySnapshot($inquiry))->values()->all();
+            $audit->record($request, 'inquiry.assigned', 'inquiries', 'Assigned '.count($items).' selected inquiries.', ContactMessage::class, implode(',', $ids), count($items).' inquiries', ['items' => $items], ['items' => $after]);
 
             return back()->with('success', 'Selected inquiries assigned.');
         }
@@ -149,6 +168,8 @@ class InquiryController extends Controller
             'status' => $data['bulk_status'] ?? ContactMessage::STATUS_NEW,
             'updated_by' => (int) $request->session()->get('admin_id'),
         ]);
+        $after = (clone $query)->get()->map(fn (ContactMessage $inquiry): array => $this->inquirySnapshot($inquiry))->values()->all();
+        $audit->record($request, 'inquiry.status_changed', 'inquiries', 'Changed the status of '.count($items).' selected inquiries.', ContactMessage::class, implode(',', $ids), count($items).' inquiries', ['items' => $items], ['items' => $after]);
 
         return back()->with('success', 'Selected inquiries updated.');
     }
@@ -228,5 +249,18 @@ class InquiryController extends Controller
         } elseif ($currentAdmin->isOwner() && ctype_digit($assignment)) {
             $query->where('assigned_to', (int) $assignment);
         }
+    }
+
+    private function inquirySnapshot(ContactMessage $inquiry): array
+    {
+        return [
+            'id' => $inquiry->id,
+            'name' => $inquiry->name,
+            'email' => $inquiry->email,
+            'phone' => $inquiry->phone,
+            'course' => $inquiry->course_interest,
+            'status' => $inquiry->status,
+            'assigned_to' => $inquiry->assigned_to,
+        ];
     }
 }

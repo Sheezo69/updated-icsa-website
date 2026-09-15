@@ -50,6 +50,9 @@
                     <a href="{{ route('admin.users.index') }}" class="admin-sidebar-link {{ request()->routeIs('admin.users.*') ? 'is-active' : '' }}">
                         <i class="fas fa-users"></i> Users
                     </a>
+                    <a href="{{ route('admin.activity.index') }}" class="admin-sidebar-link {{ request()->routeIs('admin.activity.*') ? 'is-active' : '' }}">
+                        <i class="fas fa-clock-rotate-left"></i> Activity Log
+                    </a>
                 @endif
                 <a href="{{ route('admin.settings.edit') }}" class="admin-sidebar-link {{ request()->routeIs('admin.settings.*') ? 'is-active' : '' }}">
                     <i class="fas fa-cog"></i> Settings

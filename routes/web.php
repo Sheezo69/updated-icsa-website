@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ActivityController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\CourseController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -96,6 +97,8 @@ Route::prefix($adminPrefix)->group(function (): void {
         Route::put('/settings/preferences', [SettingsController::class, 'updatePreferences'])->name('admin.settings.preferences');
 
         Route::middleware('admin.owner')->group(function (): void {
+            Route::get('/activity', [ActivityController::class, 'index'])->name('admin.activity.index');
+            Route::get('/activity/export', [ActivityController::class, 'export'])->name('admin.activity.export');
             Route::get('/users', [UserController::class, 'index'])->name('admin.users.index');
             Route::get('/users.php', fn () => redirect()->route('admin.users.index'));
             Route::post('/users', [UserController::class, 'store'])->name('admin.users.store');

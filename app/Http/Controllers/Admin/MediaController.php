@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Support\AdminActivityLogger;
 use App\Support\CourseFileRepository;
 use App\Support\MediaLibrary;
 use Illuminate\Contracts\View\View;
@@ -27,7 +28,7 @@ class MediaController extends Controller
         ]);
     }
 
-    public function store(Request $request, MediaLibrary $media): RedirectResponse
+    public function store(Request $request, MediaLibrary $media, AdminActivityLogger $audit): RedirectResponse
     {
         $data = $request->validate([
             'file' => ['required', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:20480'],
@@ -35,12 +36,18 @@ class MediaController extends Controller
             'name' => ['nullable', 'string', 'max:120'],
         ]);
 
-        $media->store($data['file'], $data['directory'], $data['name'] ?? null);
+        $path = $media->store($data['file'], $data['directory'], $data['name'] ?? null);
+        $audit->record($request, 'media.uploaded', 'media', 'Uploaded an image to the media library.', 'media', $path, basename($path), null, [
+            'path' => $path,
+            'directory' => $data['directory'],
+            'size_bytes' => $data['file']->getSize(),
+            'mime_type' => $data['file']->getMimeType(),
+        ]);
 
         return back()->with('success', 'Image uploaded successfully.');
     }
 
-    public function rename(Request $request, MediaLibrary $media, CourseFileRepository $courses): RedirectResponse
+    public function rename(Request $request, MediaLibrary $media, CourseFileRepository $courses, AdminActivityLogger $audit): RedirectResponse
     {
         $data = $request->validate([
             'path' => ['required', 'string', 'max:255'],
@@ -53,11 +60,12 @@ class MediaController extends Controller
         } catch (\Throwable $exception) {
             return back()->with('error', $exception->getMessage());
         }
+        $audit->record($request, 'media.renamed', 'media', 'Renamed a media library image and updated its course references.', 'media', $newPath, basename($newPath), ['path' => $data['path']], ['path' => $newPath]);
 
         return back()->with('success', 'Image renamed successfully as '.basename($newPath).'.');
     }
 
-    public function destroy(Request $request, MediaLibrary $media, CourseFileRepository $courses): RedirectResponse
+    public function destroy(Request $request, MediaLibrary $media, CourseFileRepository $courses, AdminActivityLogger $audit): RedirectResponse
     {
         $data = $request->validate(['path' => ['required', 'string', 'max:255']]);
         $usage = $courses->mediaUsage($data['path']);
@@ -65,6 +73,7 @@ class MediaController extends Controller
         if ($usage !== []) {
             return back()->with('error', 'This image is used by: '.implode(', ', array_column($usage, 'title')).'. Remove it from those courses before deleting it.');
         }
+        $audit->record($request, 'media.deleted', 'media', 'Deleted an unused media library image.', 'media', $data['path'], basename($data['path']), ['path' => $data['path']]);
 
         try {
             $media->delete($data['path']);

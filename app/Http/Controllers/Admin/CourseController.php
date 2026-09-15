@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Support\AdminActivityLogger;
 use App\Support\CourseFileRepository;
 use App\Support\MediaLibrary;
 use App\Support\YoutubeVideo;
@@ -66,29 +67,34 @@ class CourseController extends Controller
         ]);
     }
 
-    public function store(Request $request, CourseFileRepository $courses): RedirectResponse
+    public function store(Request $request, CourseFileRepository $courses, AdminActivityLogger $audit): RedirectResponse
     {
         $data = $this->validatedCourse($request);
         $this->handleCourseThumbnailUpload($request, $data);
         $slug = $courses->save($data);
+        $saved = $courses->find($slug);
+        $audit->record($request, 'course.created', 'courses', 'Created a course page.', 'course', $slug, $saved['title'] ?? $slug, null, $this->courseSnapshot($saved));
 
         return redirect()
             ->route('admin.courses.edit', $slug)
             ->with('success', 'Course saved successfully.');
     }
 
-    public function update(Request $request, string $slug, CourseFileRepository $courses): RedirectResponse
+    public function update(Request $request, string $slug, CourseFileRepository $courses, AdminActivityLogger $audit): RedirectResponse
     {
+        $before = $courses->find($slug);
         $data = $this->validatedCourse($request);
         $this->handleCourseThumbnailUpload($request, $data);
         $newSlug = $courses->save($data, $slug);
+        $saved = $courses->find($newSlug);
+        $audit->record($request, 'course.updated', 'courses', 'Updated a course page.', 'course', $newSlug, $saved['title'] ?? $newSlug, $this->courseSnapshot($before), $this->courseSnapshot($saved));
 
         return redirect()
             ->route('admin.courses.edit', $newSlug)
             ->with('success', 'Course updated successfully.');
     }
 
-    public function destroy(string $slug, CourseFileRepository $courses): RedirectResponse
+    public function destroy(Request $request, string $slug, CourseFileRepository $courses, AdminActivityLogger $audit): RedirectResponse
     {
         $course = $courses->find($slug);
         if ($course) {
@@ -99,6 +105,7 @@ class CourseController extends Controller
         }
 
         $courses->delete($slug);
+        $audit->record($request, 'course.deleted', 'courses', 'Deleted a course page and its managed media.', 'course', $slug, $course['title'] ?? $slug, $this->courseSnapshot($course));
 
         return redirect()->route('admin.courses.index')->with('success', 'Course deleted.');
     }
@@ -296,5 +303,18 @@ class CourseController extends Controller
         }
 
         Storage::disk('public')->delete(Str::after($path, '/storage/'));
+    }
+
+    private function courseSnapshot(?array $course): ?array
+    {
+        if ($course === null) {
+            return null;
+        }
+
+        return array_intersect_key($course, array_flip([
+            'slug', 'title', 'categories', 'badge', 'duration', 'certification', 'diploma_type',
+            'image', 'poster_image', 'background_image', 'background_darkness', 'background_blur',
+            'youtube_url', 'video_thumbnail', 'price', 'price_note',
+        ]));
     }
 }
