@@ -166,13 +166,29 @@ class InquiryEmailTrackingTest extends TestCase
             ])
             ->assertSessionHas('success');
 
-        $this->assertSame($handler->id, $excel->fresh()->updated_by);
-        $this->assertNull($design->fresh()->updated_by);
+        $this->assertSame($handler->id, $excel->fresh()->assigned_to);
+        $this->assertSame($admin->id, $excel->fresh()->updated_by);
+        $this->assertNull($design->fresh()->assigned_to);
+
+        $this->withSession(['admin_id' => $handler->id])
+            ->get(route('admin.inquiries.index', ['assignment' => 'mine']))
+            ->assertOk()
+            ->assertSee('Assigned to Me')
+            ->assertSee('Excel Student')
+            ->assertSee('Assigned to handler')
+            ->assertDontSee('Design Student');
+
+        $this->withSession(['admin_id' => $admin->id])
+            ->get(route('admin.users.index'))
+            ->assertOk()
+            ->assertSee('Assigned Inquiries')
+            ->assertSee(route('admin.inquiries.index', ['assignment' => $handler->id]), false);
 
         $export = $this->withSession(['admin_id' => $admin->id])
             ->get(route('admin.inquiries.export', ['ids' => [$excel->id]]));
         $export->assertOk()->assertDownload();
         $this->assertStringContainsString('Excel Student', $export->streamedContent());
+        $this->assertStringContainsString('handler', $export->streamedContent());
         $this->assertStringNotContainsString('Design Student', $export->streamedContent());
     }
 

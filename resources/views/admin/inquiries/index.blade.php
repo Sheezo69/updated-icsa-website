@@ -35,8 +35,29 @@
                 </article>
             </section>
 
+            <nav class="inquiry-assignment-tabs" aria-label="Inquiry assignment views">
+                <a href="{{ route('admin.inquiries.index', request()->except(['assignment', 'page'])) }}" @class(['is-active' => empty($filters['assignment'])])>
+                    <i class="fas fa-inbox" aria-hidden="true"></i>
+                    All Inquiries
+                    <span>{{ $stats['total'] }}</span>
+                </a>
+                <a href="{{ route('admin.inquiries.index', array_merge(request()->except(['assignment', 'page']), ['assignment' => 'mine'])) }}" @class(['is-active' => ($filters['assignment'] ?? '') === 'mine'])>
+                    <i class="fas fa-user-check" aria-hidden="true"></i>
+                    Assigned to Me
+                    <span>{{ $stats['assigned_to_me'] }}</span>
+                </a>
+                <a href="{{ route('admin.inquiries.index', array_merge(request()->except(['assignment', 'page']), ['assignment' => 'unassigned'])) }}" @class(['is-active' => ($filters['assignment'] ?? '') === 'unassigned'])>
+                    <i class="fas fa-user-clock" aria-hidden="true"></i>
+                    Unassigned
+                    <span>{{ $stats['unassigned'] }}</span>
+                </a>
+            </nav>
+
             <section class="inquiry-filter-card">
                 <form method="GET" action="{{ route('admin.inquiries.index') }}" class="inquiry-filter-form">
+                    @if (!empty($filters['assignment']))
+                        <input type="hidden" name="assignment" value="{{ $filters['assignment'] }}">
+                    @endif
                     <label class="inquiry-search-field">
                         <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
                         <span class="sr-only">Search inquiries</span>
@@ -80,7 +101,7 @@
 
                     <div class="inquiry-filter-actions">
                         <button type="submit" class="admin-btn admin-btn-primary"><i class="fas fa-filter" aria-hidden="true"></i> Apply</button>
-                        <a href="{{ route('admin.inquiries.index') }}" class="inquiry-clear-link"><i class="fas fa-rotate-left" aria-hidden="true"></i> Clear Filters</a>
+                        <a href="{{ route('admin.inquiries.index', array_filter(['assignment' => $filters['assignment'] ?? null])) }}" class="inquiry-clear-link"><i class="fas fa-rotate-left" aria-hidden="true"></i> Clear Filters</a>
                         <a href="{{ route('admin.inquiries.export', request()->query()) }}" class="admin-btn admin-btn-secondary"><i class="fas fa-download" aria-hidden="true"></i> Export CSV</a>
                     </div>
                 </form>
@@ -117,7 +138,7 @@
                         <button class="admin-btn admin-btn-secondary" type="submit" name="action" value="bulk_assign" form="inquiry-bulk-form" data-requires-selection disabled>Assign</button>
 
                         <button type="button" class="admin-btn admin-btn-secondary" data-export-selected data-export-url="{{ route('admin.inquiries.export') }}" data-requires-selection disabled><i class="fas fa-download" aria-hidden="true"></i> Export</button>
-                        <button class="admin-btn admin-btn-danger" type="submit" name="action" value="bulk_delete" form="inquiry-bulk-form" data-requires-selection disabled onclick="return confirm('Delete all selected inquiries?');"><i class="far fa-trash-can" aria-hidden="true"></i> Delete</button>
+                        <button class="admin-delete-button" type="submit" name="action" value="bulk_delete" form="inquiry-bulk-form" data-requires-selection disabled onclick="return confirm('Delete all selected inquiries?');"><span class="text">Delete</span><span class="icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M24 20.188l-8.315-8.209 8.2-8.282-3.697-3.697-8.212 8.318-8.31-8.203-3.666 3.666 8.321 8.24-8.206 8.313 3.666 3.666 8.237-8.318 8.285 8.203z"></path></svg></span></button>
                     </div>
                 </div>
 
@@ -157,6 +178,10 @@
                                     <td>
                                         <strong>{{ $inquiry->course_interest ?: 'General Inquiry' }}</strong>
                                         <span class="inquiry-cell-subtitle">{{ $inquiry->form_type ?: ($inquiry->subject ?: 'Website inquiry') }}</span>
+                                        <span class="inquiry-assignee {{ $inquiry->assignedTo ? 'is-assigned' : '' }}">
+                                            <i class="fas {{ $inquiry->assignedTo ? 'fa-user-check' : 'fa-user-clock' }}" aria-hidden="true"></i>
+                                            {{ $inquiry->assignedTo ? 'Assigned to '.$inquiry->assignedTo->username : 'Unassigned' }}
+                                        </span>
                                     </td>
                                     <td><span class="inquiry-status inquiry-status-{{ $inquiry->status }}"><i class="fas fa-circle" aria-hidden="true"></i> {{ $statuses[$inquiry->status] ?? ucfirst($inquiry->status) }}</span></td>
                                     <td>
@@ -212,7 +237,10 @@
                             <h3>{{ $inquiry->name }}</h3>
                             <a href="mailto:{{ $inquiry->email }}"><i class="far fa-envelope" aria-hidden="true"></i> {{ $inquiry->email }}</a>
                             <span><i class="fas fa-phone" aria-hidden="true"></i> {{ $inquiry->phone ?: 'No phone provided' }}</span>
-                            @if ($inquiry->updatedBy)<small>Assigned to {{ $inquiry->updatedBy->username }}</small>@endif
+                            <small class="inquiry-detail-assignee">
+                                <i class="fas {{ $inquiry->assignedTo ? 'fa-user-check' : 'fa-user-clock' }}" aria-hidden="true"></i>
+                                {{ $inquiry->assignedTo ? 'Assigned to '.$inquiry->assignedTo->username : 'Unassigned' }}
+                            </small>
                         </div>
                     </section>
 
@@ -257,15 +285,15 @@
                         <div class="inquiry-detail-actions">
                             <a class="admin-btn admin-btn-primary" href="mailto:{{ $inquiry->email }}?subject={{ rawurlencode('Your ICSA inquiry #'.$inquiry->id) }}"><i class="far fa-paper-plane" aria-hidden="true"></i> Send Email</a>
                             @if ($phoneDigits)
-                                <a class="admin-btn admin-btn-secondary" href="https://wa.me/{{ $phoneDigits }}?text={{ $whatsappText }}" target="_blank" rel="noopener noreferrer"><i class="fab fa-whatsapp" aria-hidden="true"></i> Call</a>
+                                <a class="admin-btn admin-btn-secondary" href="https://wa.me/{{ $phoneDigits }}?text={{ $whatsappText }}" target="_blank" rel="noopener noreferrer"><i class="fab fa-whatsapp" aria-hidden="true"></i> Message</a>
                             @else
-                                <button type="button" class="admin-btn admin-btn-secondary" disabled><i class="fab fa-whatsapp" aria-hidden="true"></i> Call</button>
+                                <button type="button" class="admin-btn admin-btn-secondary" disabled><i class="fab fa-whatsapp" aria-hidden="true"></i> Message</button>
                             @endif
                             <button type="button" class="admin-btn admin-btn-secondary" data-copy-contact data-contact="{{ $inquiry->name }}&#10;{{ $inquiry->email }}&#10;{{ $inquiry->phone }}"><i class="far fa-copy" aria-hidden="true"></i> Copy Contact</button>
                             <form method="POST" action="{{ route('admin.inquiries.destroy', $inquiry) }}" onsubmit="return confirm('Delete inquiry #{{ $inquiry->id }}?');">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="admin-btn admin-btn-danger"><i class="far fa-trash-can" aria-hidden="true"></i> Delete</button>
+                                <button type="submit" class="admin-delete-button"><span class="text">Delete</span><span class="icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M24 20.188l-8.315-8.209 8.2-8.282-3.697-3.697-8.212 8.318-8.31-8.203-3.666 3.666 8.321 8.24-8.206 8.313 3.666 3.666 8.237-8.318 8.285 8.203z"></path></svg></span></button>
                             </form>
                         </div>
                     </section>

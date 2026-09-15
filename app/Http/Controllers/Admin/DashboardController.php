@@ -5,13 +5,19 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ContactMessage;
 use App\Support\CourseFileRepository;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function index(CourseFileRepository $courses): View
+    public function index(Request $request, CourseFileRepository $courses): View
     {
+        $chartPeriod = (int) $request->query('period', 7);
+        if (! in_array($chartPeriod, [7, 30, 90], true)) {
+            $chartPeriod = 7;
+        }
+
         $currentPeriod = [now()->subDays(6)->startOfDay(), now()->endOfDay()];
         $previousPeriod = [now()->subDays(13)->startOfDay(), now()->subDays(7)->endOfDay()];
 
@@ -76,14 +82,25 @@ class DashboardController extends Controller
             ->where('course_interest', '!=', '')
             ->count();
 
-        $chartData = collect(range(6, 0))
-            ->map(function (int $daysAgo): array {
-                $date = now()->subDays($daysAgo)->startOfDay();
+        $bucketDays = match ($chartPeriod) {
+            30 => 3,
+            90 => 9,
+            default => 1,
+        };
+        $bucketCount = (int) ceil($chartPeriod / $bucketDays);
+
+        $chartData = collect(range($bucketCount - 1, 0))
+            ->map(function (int $bucketIndex) use ($bucketDays): array {
+                $start = now()->subDays((($bucketIndex + 1) * $bucketDays) - 1)->startOfDay();
+                $end = now()->subDays($bucketIndex * $bucketDays)->endOfDay();
 
                 return [
-                    'date' => $date->format('M j'),
+                    'date' => $end->format('M j'),
+                    'range' => $bucketDays === 1
+                        ? $start->format('M j, Y')
+                        : $start->format('M j').' – '.$end->format('M j, Y'),
                     'count' => ContactMessage::query()
-                        ->whereBetween('created_at', [$date, $date->copy()->endOfDay()])
+                        ->whereBetween('created_at', [$start, $end])
                         ->count(),
                 ];
             });
@@ -95,6 +112,7 @@ class DashboardController extends Controller
             'chartData' => $chartData,
             'trends' => $trends,
             'courseInquiryTotal' => $courseInquiryTotal,
+            'chartPeriod' => $chartPeriod,
         ]);
     }
 }

@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\CourseController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\InquiryController;
 use App\Http\Controllers\Admin\MediaController;
+use App\Http\Controllers\Admin\MessageController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Api\FormController;
@@ -58,6 +59,11 @@ Route::prefix($adminPrefix)->group(function (): void {
         Route::delete('/inquiries/{inquiry}', [InquiryController::class, 'destroy'])->name('admin.inquiries.destroy');
         Route::post('/inquiries/bulk', [InquiryController::class, 'bulk'])->name('admin.inquiries.bulk');
 
+        Route::get('/messages', [MessageController::class, 'index'])->name('admin.messages.index');
+        Route::post('/messages', [MessageController::class, 'send'])->middleware('throttle:30,1')->name('admin.messages.send');
+        Route::get('/messages/unread', [MessageController::class, 'unread'])->name('admin.messages.unread');
+        Route::get('/messages/{conversation}/poll', [MessageController::class, 'poll'])->name('admin.messages.poll');
+
         Route::middleware('admin.permission:courses')->group(function (): void {
             Route::get('/courses', [CourseController::class, 'index'])->name('admin.courses.index');
             Route::get('/courses.php', fn () => redirect()->route('admin.courses.index'));
@@ -84,7 +90,10 @@ Route::prefix($adminPrefix)->group(function (): void {
 
         Route::get('/settings', [SettingsController::class, 'edit'])->name('admin.settings.edit');
         Route::get('/settings.php', fn () => redirect()->route('admin.settings.edit'));
+        Route::put('/settings/profile', [SettingsController::class, 'updateProfile'])->name('admin.settings.profile');
         Route::put('/settings/password', [SettingsController::class, 'updatePassword'])->name('admin.settings.password');
+        Route::put('/settings/notifications', [SettingsController::class, 'updateNotifications'])->name('admin.settings.notifications');
+        Route::put('/settings/preferences', [SettingsController::class, 'updatePreferences'])->name('admin.settings.preferences');
 
         Route::middleware('admin.owner')->group(function (): void {
             Route::get('/users', [UserController::class, 'index'])->name('admin.users.index');

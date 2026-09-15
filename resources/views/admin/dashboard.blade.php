@@ -32,7 +32,7 @@
     })->implode(' ');
 @endphp
 
-@section('title', $greeting.', '.$displayName.'! 👋')
+@section('title', $greeting.', '.$displayName.'! 🧙🏽')
 @section('subtitle', "Here's an overview of your ICSA website performance and recent activity.")
 
 @section('content')
@@ -80,13 +80,23 @@
             <header class="dashboard-panel-header">
                 <div class="dashboard-panel-title">
                     <span class="dashboard-panel-icon"><i class="fas fa-chart-simple" aria-hidden="true"></i></span>
-                    <div><h2>Inquiries Overview</h2><p>Total inquiries over the last 7 days</p></div>
+                    <div><h2>Inquiries Overview</h2><p>Total inquiries over the last {{ $chartPeriod }} days</p></div>
                 </div>
-                <span class="dashboard-period-pill">Last 7 Days <i class="fas fa-chevron-down" aria-hidden="true"></i></span>
+                <form method="GET" action="{{ route('admin.dashboard') }}" class="dashboard-period-form">
+                    <label class="dashboard-period-pill">
+                        <span class="sr-only">Chart period</span>
+                        <select name="period" onchange="this.form.submit()" aria-label="Select inquiry chart period">
+                            @foreach ([7 => 'Last 7 Days', 30 => 'Last 30 Days', 90 => 'Last 90 Days'] as $days => $label)
+                                <option value="{{ $days }}" @selected($chartPeriod === $days)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                    </label>
+                </form>
             </header>
 
             <div class="dashboard-line-chart">
-                <svg viewBox="0 0 600 180" role="img" aria-label="Daily inquiry totals over the last seven days" preserveAspectRatio="none">
+                <svg viewBox="0 0 600 180" role="img" aria-label="Inquiry totals over the last {{ $chartPeriod }} days" preserveAspectRatio="none">
                     <defs>
                         <linearGradient id="dashboardChartFill" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stop-color="#2f85ff" stop-opacity="0.35"/>
@@ -103,10 +113,10 @@
                             $circleX = ($index / $chartDivisor) * 600;
                             $circleY = 160 - (($point['count'] / $chartMaximum) * 125);
                         @endphp
-                        <circle cx="{{ $circleX }}" cy="{{ $circleY }}" r="5" fill="#4d97ff" stroke="#d5e9ff" stroke-width="2"><title>{{ $point['date'] }}: {{ $point['count'] }} inquiries</title></circle>
+                        <circle cx="{{ $circleX }}" cy="{{ $circleY }}" r="5" fill="#4d97ff" stroke="#d5e9ff" stroke-width="2"><title>{{ $point['range'] }}: {{ $point['count'] }} inquiries</title></circle>
                     @endforeach
                 </svg>
-                <div class="dashboard-chart-labels">
+                <div class="dashboard-chart-labels" style="--chart-columns: {{ $chartData->count() }};">
                     @foreach ($chartData as $point)<span>{{ $point['date'] }}</span>@endforeach
                 </div>
             </div>

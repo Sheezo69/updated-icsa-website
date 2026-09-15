@@ -9,13 +9,17 @@ use App\Support\InquiryMailer;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class InquiryController extends Controller
 {
     public function index(Request $request): View
     {
-        $query = ContactMessage::query()->with(['emailAttempts', 'updatedBy']);
+        $currentAdmin = $request->attributes->get('currentAdmin');
+        $query = ContactMessage::query()->with(['emailAttempts', 'assignedTo']);
+
+        $this->applyAssignmentFilter($query, $request, $currentAdmin);
 
         if ($status = $request->string('status')->toString()) {
             $query->where('status', $status);
@@ -53,19 +57,21 @@ class InquiryController extends Controller
             ContactMessage::STATUS_NEW => ContactMessage::query()->where('status', ContactMessage::STATUS_NEW)->count(),
             ContactMessage::STATUS_IN_PROGRESS => ContactMessage::query()->where('status', ContactMessage::STATUS_IN_PROGRESS)->count(),
             ContactMessage::STATUS_RESOLVED => ContactMessage::query()->where('status', ContactMessage::STATUS_RESOLVED)->count(),
+            'assigned_to_me' => ContactMessage::query()->where('assigned_to', $currentAdmin->id)->count(),
+            'unassigned' => ContactMessage::query()->whereNull('assigned_to')->count(),
         ];
 
         return view('admin.inquiries.index', [
             'inquiries' => $inquiries,
             'stats' => $stats,
-            'filters' => $request->only(['status', 'course', 'search', 'date_from', 'date_to']),
+            'filters' => $request->only(['status', 'course', 'search', 'date_from', 'date_to', 'assignment']),
             'courses' => ContactMessage::query()
                 ->whereNotNull('course_interest')
                 ->where('course_interest', '!=', '')
                 ->distinct()
                 ->orderBy('course_interest')
                 ->pluck('course_interest'),
-            'admins' => Admin::query()->orderBy('username')->get(['id', 'username']),
+            'admins' => Admin::query()->where('role', Admin::ROLE_STAFF)->orderBy('username')->get(['id', 'username']),
         ]);
     }
 
@@ -114,7 +120,12 @@ class InquiryController extends Controller
             'ids' => ['required', 'array', 'min:1'],
             'ids.*' => ['integer'],
             'bulk_status' => ['nullable', 'required_if:action,bulk_status', 'in:new,in_progress,resolved,archived'],
-            'assigned_admin' => ['nullable', 'required_if:action,bulk_assign', 'integer', 'exists:admins,id'],
+            'assigned_admin' => [
+                'nullable',
+                'required_if:action,bulk_assign',
+                'integer',
+                Rule::exists('admins', 'id')->where('role', Admin::ROLE_STAFF),
+            ],
         ]);
 
         $query = ContactMessage::query()->whereIn('id', $data['ids']);
@@ -126,7 +137,10 @@ class InquiryController extends Controller
         }
 
         if ($data['action'] === 'bulk_assign') {
-            $query->update(['updated_by' => $data['assigned_admin']]);
+            $query->update([
+                'assigned_to' => $data['assigned_admin'],
+                'updated_by' => (int) $request->session()->get('admin_id'),
+            ]);
 
             return back()->with('success', 'Selected inquiries assigned.');
         }
@@ -141,7 +155,10 @@ class InquiryController extends Controller
 
     public function export(Request $request): StreamedResponse
     {
-        $query = ContactMessage::query()->latest('created_at');
+        $currentAdmin = $request->attributes->get('currentAdmin');
+        $query = ContactMessage::query()->with('assignedTo')->latest('created_at');
+
+        $this->applyAssignmentFilter($query, $request, $currentAdmin);
 
         if ($status = $request->string('status')->toString()) {
             $query->where('status', $status);
@@ -177,7 +194,7 @@ class InquiryController extends Controller
 
         return response()->streamDownload(function () use ($query): void {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['ID', 'Name', 'Email', 'Phone', 'Course', 'Subject', 'Message', 'Status', 'Date']);
+            fputcsv($handle, ['ID', 'Name', 'Email', 'Phone', 'Course', 'Subject', 'Message', 'Status', 'Assigned To', 'Date']);
 
             $query->chunk(500, function ($messages) use ($handle): void {
                 foreach ($messages as $message) {
@@ -190,6 +207,7 @@ class InquiryController extends Controller
                         $message->subject,
                         $message->message,
                         $message->status,
+                        $message->assignedTo?->username,
                         optional($message->created_at)->format('Y-m-d H:i:s'),
                     ]);
                 }
@@ -197,5 +215,18 @@ class InquiryController extends Controller
 
             fclose($handle);
         }, $fileName, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    private function applyAssignmentFilter($query, Request $request, Admin $currentAdmin): void
+    {
+        $assignment = $request->string('assignment')->toString();
+
+        if ($assignment === 'mine') {
+            $query->where('assigned_to', $currentAdmin->id);
+        } elseif ($assignment === 'unassigned') {
+            $query->whereNull('assigned_to');
+        } elseif ($currentAdmin->isOwner() && ctype_digit($assignment)) {
+            $query->where('assigned_to', (int) $assignment);
+        }
     }
 }

@@ -78,6 +78,7 @@
                     <th>User</th>
                     <th>Role</th>
                     <th>Section Access</th>
+                    <th>Assigned Inquiries</th>
                     <th>Last Login</th>
                     <th>Created</th>
                     <th>Reset Password</th>
@@ -113,6 +114,16 @@
                                 </form>
                             @endif
                         </td>
+                        <td>
+                            @if ($user->role === \App\Models\Admin::ROLE_STAFF)
+                                <a class="admin-assigned-link" href="{{ route('admin.inquiries.index', ['assignment' => $user->id]) }}">
+                                    <strong>{{ $user->assigned_inquiries_count }}</strong>
+                                    <span>View assigned</span>
+                                </a>
+                            @else
+                                <span class="admin-muted">Not assignable</span>
+                            @endif
+                        </td>
                         <td>{{ optional($user->last_login)->format('M d, Y H:i') ?: 'Never' }}</td>
                         <td>{{ optional($user->created_at)->format('M d, Y') }}</td>
                         <td>
@@ -128,7 +139,7 @@
                                 <form method="POST" action="{{ route('admin.users.destroy', $user) }}" onsubmit="return confirm('Delete this user?');">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="admin-btn admin-btn-danger">Delete</button>
+                                    <button type="submit" class="admin-delete-button"><span class="text">Delete</span><span class="icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M24 20.188l-8.315-8.209 8.2-8.282-3.697-3.697-8.212 8.318-8.31-8.203-3.666 3.666 8.321 8.24-8.206 8.313 3.666 3.666 8.237-8.318 8.285 8.203z"></path></svg></span></button>
                                 </form>
                             @else
                                 <span class="admin-muted">Current user</span>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ $currentAdmin->language ?? 'en' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -31,6 +31,10 @@
                     @if (request()->routeIs('admin.inquiries.*') && isset($stats['total']))
                         <span class="admin-sidebar-count">{{ $stats['total'] }}</span>
                     @endif
+                </a>
+                <a href="{{ route('admin.messages.index') }}" class="admin-sidebar-link {{ request()->routeIs('admin.messages.*') ? 'is-active' : '' }}">
+                    <i class="fas fa-comments"></i> Messages
+                    <span class="admin-sidebar-count admin-message-count" data-message-unread @if (($adminUnreadMessages ?? 0) < 1) hidden @endif>{{ $adminUnreadMessages ?? 0 }}</span>
                 </a>
                 @if (($currentAdmin ?? null)?->canAccess('courses'))
                     <a href="{{ route('admin.courses.index') }}" class="admin-sidebar-link {{ request()->routeIs('admin.courses.*') ? 'is-active' : '' }}">
@@ -79,8 +83,15 @@
 
                 @if (($currentAdmin ?? null))
                     <div class="admin-user-pill">
+                        @if ($currentAdmin->avatar_path)
+                            <img src="{{ asset($currentAdmin->avatar_path) }}" alt="" class="admin-user-pill-avatar">
+                        @else
+                            <span class="admin-user-pill-avatar admin-user-pill-initial">{{ \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($currentAdmin->username, 0, 1)) }}</span>
+                        @endif
+                        <span class="admin-user-pill-copy">
                         <strong>{{ $currentAdmin->username }}</strong>
                         <span>{{ ucfirst($currentAdmin->role) }}</span>
+                        </span>
                     </div>
                 @endif
             </div>
@@ -90,6 +101,23 @@
             @yield('content')
         </main>
     </div>
+    @if (($currentAdmin ?? null))
+        <script>
+            window.updateAdminUnread = count => {
+                document.querySelectorAll('[data-message-unread]').forEach(badge => {
+                    badge.textContent = count;
+                    badge.hidden = Number(count) < 1;
+                });
+            };
+            window.setInterval(async () => {
+                if (document.hidden) return;
+                try {
+                    const response = await fetch(@json(route('admin.messages.unread')), { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+                    if (response.ok) window.updateAdminUnread((await response.json()).unread_count);
+                } catch (_) {}
+            }, 15000);
+        </script>
+    @endif
     @stack('scripts')
 </body>
 </html>

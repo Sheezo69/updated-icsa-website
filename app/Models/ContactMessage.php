@@ -24,6 +24,7 @@ class ContactMessage extends Model
         'admin_notes',
         'replied_at',
         'updated_by',
+        'assigned_to',
         'form_type',
     ];
 
@@ -40,5 +41,10 @@ class ContactMessage extends Model
     public function updatedBy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Admin::class, 'updated_by');
+    }
+
+    public function assignedTo(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Admin::class, 'assigned_to');
     }
 }

@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
+use App\Models\ContactMessage;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\File;
 use Illuminate\Validation\Rule;
 
 class UserController extends Controller
@@ -15,7 +17,7 @@ class UserController extends Controller
     public function index(): View
     {
         return view('admin.users.index', [
-            'users' => Admin::query()->orderByDesc('created_at')->get(),
+            'users' => Admin::query()->withCount('assignedInquiries')->orderByDesc('created_at')->get(),
         ]);
     }
 
@@ -49,6 +51,10 @@ class UserController extends Controller
             return back()->with('error', 'You cannot delete your own account.');
         }
 
+        ContactMessage::query()->where('assigned_to', $user->id)->update(['assigned_to' => null]);
+        if ($user->avatar_path && str_starts_with($user->avatar_path, 'uploads/admin-avatars/')) {
+            File::delete(public_path($user->avatar_path));
+        }
         $user->delete();
 
         return back()->with('success', 'User deleted successfully.');

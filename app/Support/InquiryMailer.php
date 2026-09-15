@@ -4,10 +4,12 @@ namespace App\Support;
 
 use App\Mail\AdminInquiryNotification;
 use App\Mail\VisitorConfirmation;
+use App\Models\Admin;
 use App\Models\ContactMessage;
 use App\Models\InquiryEmailAttempt;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 
 class InquiryMailer
 {
@@ -51,7 +53,23 @@ class InquiryMailer
                 $mail = $kind === 'visitor'
                     ? new VisitorConfirmation($inquiry)
                     : new AdminInquiryNotification($inquiry, $inquiry->form_type ?? 'Contact Form');
-                $sent = Mail::to($recipient)->send($mail);
+                $pendingMail = Mail::to($recipient);
+                if ($kind === 'admin' && Schema::hasColumns('admins', ['notify_email', 'notify_inquiries'])) {
+                    $copies = Admin::query()
+                        ->where('notify_email', true)
+                        ->where('notify_inquiries', true)
+                        ->whereNotNull('email')
+                        ->pluck('email')
+                        ->filter(fn ($email) => filter_var($email, FILTER_VALIDATE_EMAIL) && $email !== $recipient)
+                        ->unique()
+                        ->values()
+                        ->all();
+
+                    if ($copies !== []) {
+                        $pendingMail->bcc($copies);
+                    }
+                }
+                $sent = $pendingMail->send($mail);
                 if ($sent === null) {
                     throw new \RuntimeException('The mail transport did not accept the message.');
                 }
