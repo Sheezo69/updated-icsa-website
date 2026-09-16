@@ -13,6 +13,10 @@ class AdminMessage extends Model
         'sender_name',
         'body',
         'read_at',
+        'attachment_path',
+        'attachment_name',
+        'attachment_mime',
+        'attachment_size',
     ];
 
     protected $casts = [
@@ -20,6 +24,7 @@ class AdminMessage extends Model
         'sender_id' => 'integer',
         'read_at' => 'datetime',
         'created_at' => 'datetime',
+        'attachment_size' => 'integer',
     ];
 
     public function conversation(): BelongsTo

@@ -3388,6 +3388,38 @@ a {
     }
 }
 /* Activity log */
+/* Messaging additions */
+.message-box-tabs { display:flex; gap:6px; padding:0 1.05rem .75rem; }
+.message-box-tabs a { flex:1; display:flex; align-items:center; justify-content:center; gap:7px; padding:9px 6px; border:1px solid rgba(67,125,199,.2); border-radius:9px; color:#8ca9cc; text-decoration:none; font-size:.68rem; font-weight:700; }
+.message-box-tabs a.is-active { color:#e4f1ff; border-color:rgba(51,133,242,.45); background:rgba(31,111,235,.2); }
+.message-pin-mark { color:#7bb7ff; font-size:.65rem; }
+.message-thread-actions { display:flex; align-items:center; gap:5px; flex:none!important; }
+.message-thread-actions form { margin:0; }
+.message-thread-actions button { width:32px; height:32px; display:grid; place-items:center; border:1px solid rgba(83,145,220,.24); border-radius:9px; color:#94b6dd; background:rgba(28,79,142,.12); cursor:pointer; }
+.message-thread-actions button:hover,.message-thread-actions button.is-active { color:#fff; border-color:#277ef0; background:rgba(39,126,240,.3); }
+.message-attachment { display:flex; align-items:center; gap:9px; margin-top:7px; padding:9px 11px; min-width:180px; border:1px solid rgba(176,210,251,.3); border-radius:10px; color:#f3f8ff; background:rgba(4,22,43,.28); text-decoration:none; }
+.message-attachment:hover { background:rgba(7,37,74,.48); }
+.message-attachment i { font-size:1.15rem; color:#a9d0ff; }
+.message-attachment span { min-width:0; display:flex; flex-direction:column; gap:2px; }
+.message-attachment strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.69rem; }
+.message-attachment small { color:#b9d3ef; font-size:.57rem; }
+.message-composer { grid-template-columns:auto minmax(0,1fr) auto auto; }
+.message-attach-button { width:43px; height:43px; display:grid; place-items:center; border:1px solid rgba(72,132,209,.3); border-radius:12px; color:#acd2ff; background:rgba(19,65,126,.18); cursor:pointer; }
+.message-attach-button:hover { border-color:#468feb; background:rgba(28,108,221,.3); }
+.message-attach-button input { position:absolute; width:1px; height:1px; opacity:0; }
+.message-file-name { grid-column:1/-1; grid-row:2; padding:4px 8px; color:#a5cef9; font-size:.62rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.message-file-name[hidden] { display:none; }
+.message-modal-field input[type=file] { width:100%; color:#c7dcf4; font-size:.68rem; }
+.message-modal-field small { color:#6e8bab; }
+.admin-message-toast { position:fixed; right:22px; bottom:22px; z-index:1000; display:flex; align-items:center; gap:11px; width:min(365px,calc(100vw - 28px)); padding:12px; border:1px solid rgba(72,145,236,.55); border-radius:13px; color:#e6f3ff; background:#102947; box-shadow:0 15px 40px rgba(0,0,0,.45); }
+.admin-message-toast[hidden] { display:none; }
+.admin-message-toast-icon { width:36px; height:36px; display:grid; place-items:center; border-radius:10px; color:#fff; background:#216ddd; }
+.admin-message-toast>span:nth-child(2) { min-width:0; flex:1; display:flex; flex-direction:column; gap:2px; }
+.admin-message-toast strong { font-size:.76rem; }
+.admin-message-toast small { color:#aac5e3; font-size:.64rem; }
+.admin-message-toast a { color:#8fc2ff; font-size:.69rem; font-weight:800; text-decoration:none; }
+.admin-message-toast button { border:0; color:#9db9d9; background:transparent; cursor:pointer; }
+@media (max-width:680px) { .message-composer { grid-template-columns:auto minmax(0,1fr) auto; } .message-composer .message-character-count { display:none; } .message-thread-actions button { width:29px; height:29px; } }
 .activity-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin-bottom:16px; }
 .activity-stats article { display:flex; align-items:center; gap:14px; min-height:104px; padding:18px; border:1px solid var(--admin-border); border-radius:16px; background:linear-gradient(145deg,rgba(13,35,65,.92),rgba(5,21,42,.96)); }
 .activity-stats article div { display:flex; flex-direction:column; gap:5px; color:var(--admin-muted); }

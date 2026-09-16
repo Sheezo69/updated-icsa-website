@@ -18,9 +18,14 @@
             </div>
 
             <form class="message-search" method="GET" action="{{ route('admin.messages.index') }}">
+                @if ($box === 'archived')<input type="hidden" name="box" value="archived">@endif
                 <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
                 <input name="search" value="{{ $search }}" placeholder="Search conversations..." aria-label="Search conversations">
             </form>
+            <nav class="message-box-tabs" aria-label="Conversation folders">
+                <a href="{{ route('admin.messages.index') }}" class="{{ $box === 'active' ? 'is-active' : '' }}"><i class="fas fa-inbox"></i> Inbox</a>
+                <a href="{{ route('admin.messages.index', ['box' => 'archived']) }}" class="{{ $box === 'archived' ? 'is-active' : '' }}"><i class="fas fa-box-archive"></i> Archived</a>
+            </nav>
 
             <div class="message-conversation-list">
                 @forelse ($conversations as $conversation)
@@ -30,16 +35,16 @@
                         $partnerName = $partner?->username ?? $conversation->otherParticipantName($currentAdmin->id);
                         $initial = \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($partnerName, 0, 1));
                     @endphp
-                    <a href="{{ route('admin.messages.index', ['conversation' => $conversation->id]) }}"
+                    <a href="{{ route('admin.messages.index', ['conversation' => $conversation->id, ...($box === 'archived' ? ['box' => 'archived'] : [])]) }}"
                        class="message-conversation {{ $selectedConversation?->id === $conversation->id ? 'is-active' : '' }}">
                         <span class="message-avatar message-avatar-{{ $partnerId % 6 }}">{{ $initial ?: '?' }}<i></i></span>
                         <span class="message-conversation-copy">
                             <span class="message-conversation-top">
-                                <strong>{{ $partnerName }}</strong>
+                                <strong>@if ($conversation->isPinnedFor($currentAdmin->id))<i class="fas fa-thumbtack message-pin-mark" aria-label="Pinned"></i> @endif{{ $partnerName }}</strong>
                                 <time>{{ optional($conversation->last_message_at)->isToday() ? optional($conversation->last_message_at)->format('h:i A') : optional($conversation->last_message_at)->format('M d') }}</time>
                             </span>
                             <span class="message-conversation-bottom">
-                                <span>{{ \Illuminate\Support\Str::limit($conversation->latestMessage?->body ?? 'No messages yet', 42) }}</span>
+                                <span>{{ \Illuminate\Support\Str::limit($conversation->latestMessage?->body ?: ($conversation->latestMessage?->attachment_name ? 'Attachment: '.$conversation->latestMessage->attachment_name : 'No messages yet'), 42) }}</span>
                                 @if ($conversation->unread_count > 0)<b>{{ $conversation->unread_count }}</b>@endif
                             </span>
                         </span>
@@ -48,7 +53,7 @@
                     <div class="message-list-empty">
                         <i class="far fa-message" aria-hidden="true"></i>
                         <strong>{{ $search ? 'No matches found' : 'Your inbox is clear' }}</strong>
-                        <span>{{ $search ? 'Try another name.' : 'Start a conversation with your team.' }}</span>
+                        <span>{{ $search ? 'Try another name.' : ($box === 'archived' ? 'Archived conversations will appear here.' : 'Start a conversation with your team.') }}</span>
                     </div>
                 @endforelse
             </div>
@@ -69,14 +74,31 @@
                         <span>{{ $otherParticipant ? ucfirst($otherParticipant->role).' account' : 'Deleted account' }}</span>
                     </div>
                     <span class="message-private-pill"><i class="fas fa-lock" aria-hidden="true"></i> Private</span>
+                    <div class="message-thread-actions">
+                        <form method="POST" action="{{ route('admin.messages.pin', $selectedConversation) }}">
+                            @csrf @method('PATCH')
+                            <input type="hidden" name="box" value="{{ $box }}">
+                            <button type="submit" title="{{ $selectedConversation->isPinnedFor($currentAdmin->id) ? 'Unpin' : 'Pin' }} conversation" aria-label="{{ $selectedConversation->isPinnedFor($currentAdmin->id) ? 'Unpin' : 'Pin' }} conversation" class="{{ $selectedConversation->isPinnedFor($currentAdmin->id) ? 'is-active' : '' }}"><i class="fas fa-thumbtack"></i></button>
+                        </form>
+                        <form method="POST" action="{{ route('admin.messages.archive', $selectedConversation) }}">
+                            @csrf @method('PATCH')
+                            <button type="submit" title="{{ $selectedConversation->isArchivedFor($currentAdmin->id) ? 'Restore' : 'Archive' }} conversation" aria-label="{{ $selectedConversation->isArchivedFor($currentAdmin->id) ? 'Restore' : 'Archive' }} conversation"><i class="fas fa-{{ $selectedConversation->isArchivedFor($currentAdmin->id) ? 'inbox' : 'box-archive' }}"></i></button>
+                        </form>
+                    </div>
                 </header>
 
-                <div class="message-thread-body" data-message-thread data-last-message="{{ $lastMessageId }}" data-poll-url="{{ route('admin.messages.poll', $selectedConversation) }}">
+                <div class="message-thread-body" data-message-thread data-conversation-id="{{ $selectedConversation->id }}" data-last-message="{{ $lastMessageId }}" data-poll-url="{{ route('admin.messages.poll', $selectedConversation) }}">
                     <div class="message-date-divider"><span>Conversation</span></div>
                     @foreach ($messages as $message)
                         <article class="message-bubble-row {{ $message->sender_id === $currentAdmin->id ? 'is-mine' : 'is-theirs' }}" data-message-id="{{ $message->id }}">
                             <div class="message-bubble">
-                                <p>{{ $message->body }}</p>
+                                @if ($message->body !== '')<p>{{ $message->body }}</p>@endif
+                                @if ($message->attachment_path)
+                                    <a class="message-attachment" href="{{ route('admin.messages.attachment', $message) }}">
+                                        <i class="fas fa-{{ $message->attachment_mime === 'application/pdf' ? 'file-pdf' : 'image' }}" aria-hidden="true"></i>
+                                        <span><strong>{{ $message->attachment_name }}</strong><small>{{ number_format(($message->attachment_size ?? 0) / 1024) }} KB · Download</small></span>
+                                    </a>
+                                @endif
                                 <footer>
                                     <time datetime="{{ optional($message->created_at)->toIso8601String() }}">{{ optional($message->created_at)->format('h:i A') }}</time>
                                     @if ($message->sender_id === $currentAdmin->id)
@@ -89,13 +111,19 @@
                 </div>
 
                 @if ($otherParticipant)
-                    <form method="POST" action="{{ route('admin.messages.send') }}" class="message-composer" data-message-form>
+                    <form method="POST" action="{{ route('admin.messages.send') }}" enctype="multipart/form-data" class="message-composer" data-message-form>
                         @csrf
                         <input type="hidden" name="conversation_id" value="{{ $selectedConversation->id }}">
+                        <label class="message-attach-button" title="Attach image or PDF (up to 5 MB)">
+                            <i class="fas fa-paperclip" aria-hidden="true"></i>
+                            <span class="sr-only">Attach image or PDF</span>
+                            <input type="file" name="attachment" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" data-message-attachment>
+                        </label>
                         <label>
                             <span class="sr-only">Message {{ $partnerName }}</span>
-                            <textarea name="body" rows="1" maxlength="2000" placeholder="Write a message..." required data-message-input>{{ old('body') }}</textarea>
+                            <textarea name="body" rows="1" maxlength="2000" placeholder="Write a message..." data-message-input>{{ old('body') }}</textarea>
                         </label>
+                        <span class="message-file-name" data-message-file-name hidden></span>
                         <span class="message-character-count" data-character-count>0/2000</span>
                         <button type="submit" aria-label="Send message"><i class="fas fa-paper-plane" aria-hidden="true"></i></button>
                     </form>
@@ -115,7 +143,7 @@
     </div>
 
     <dialog class="message-compose-modal" data-compose-modal>
-        <form method="POST" action="{{ route('admin.messages.send') }}">
+        <form method="POST" action="{{ route('admin.messages.send') }}" enctype="multipart/form-data">
             @csrf
             <header>
                 <div><span class="message-eyebrow">Private message</span><h2>New conversation</h2></div>
@@ -132,7 +160,11 @@
             </label>
             <label class="message-modal-field">
                 <span>Message</span>
-                <textarea name="body" rows="5" maxlength="2000" placeholder="What would you like to say?" required></textarea>
+                <textarea name="body" rows="5" maxlength="2000" placeholder="What would you like to say?"></textarea>
+            </label>
+            <label class="message-modal-field">
+                <span>Attachment <small>JPG, PNG, WebP, GIF or PDF · max 5 MB</small></span>
+                <input type="file" name="attachment" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf">
             </label>
             <footer>
                 <button type="button" class="admin-btn admin-btn-secondary" data-close-compose>Cancel</button>
@@ -151,6 +183,15 @@
     modal?.addEventListener('click', event => { if (event.target === modal) modal.close(); });
 
     const input = document.querySelector('[data-message-input]');
+    const attachmentInput = document.querySelector('[data-message-attachment]');
+    const attachmentName = document.querySelector('[data-message-file-name]');
+    attachmentInput?.addEventListener('change', () => {
+        const file = attachmentInput.files?.[0];
+        if (attachmentName) {
+            attachmentName.textContent = file ? `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)} MB` : '';
+            attachmentName.hidden = !file;
+        }
+    });
     const count = document.querySelector('[data-character-count]');
     const resizeInput = () => {
         if (!input) return;
@@ -162,7 +203,7 @@
     input?.addEventListener('keydown', event => {
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
-            if (input.value.trim()) input.form.requestSubmit();
+            if (input.value.trim() || attachmentInput?.files?.length) input.form.requestSubmit();
         }
     });
     resizeInput();
@@ -180,6 +221,22 @@
         bubble.className = 'message-bubble';
         const body = document.createElement('p');
         body.textContent = message.body;
+        if (!message.body) body.hidden = true;
+        if (message.attachment) {
+            const link = document.createElement('a');
+            link.className = 'message-attachment';
+            link.href = message.attachment.url;
+            const icon = document.createElement('i');
+            icon.className = `fas fa-${message.attachment.mime === 'application/pdf' ? 'file-pdf' : 'image'}`;
+            const details = document.createElement('span');
+            const name = document.createElement('strong');
+            name.textContent = message.attachment.name;
+            const size = document.createElement('small');
+            size.textContent = `${Math.round(message.attachment.size / 1024)} KB · Download`;
+            details.append(name, size);
+            link.append(icon, details);
+            bubble.append(link);
+        }
         const footer = document.createElement('footer');
         const time = document.createElement('time');
         time.dateTime = message.datetime || '';
@@ -191,7 +248,8 @@
             receipt.dataset.readReceipt = '';
             footer.append(receipt);
         }
-        bubble.append(body, footer);
+        bubble.prepend(body);
+        bubble.append(footer);
         row.append(bubble);
         thread.append(row);
     };

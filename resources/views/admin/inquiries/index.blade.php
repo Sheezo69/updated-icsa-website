@@ -289,6 +289,16 @@
                             @else
                                 <button type="button" class="admin-btn admin-btn-secondary" disabled><i class="fab fa-whatsapp" aria-hidden="true"></i> Message</button>
                             @endif
+                            @if ($currentAdmin->isOwner())
+                                @if ($inquiry->assignedTo?->role === \App\Models\Admin::ROLE_STAFF)
+                                    <form method="POST" action="{{ route('admin.inquiries.message-assignee', $inquiry) }}">
+                                        @csrf
+                                        <button type="submit" class="admin-btn admin-btn-secondary"><i class="fas fa-comments" aria-hidden="true"></i> Message Assigned Staff</button>
+                                    </form>
+                                @else
+                                    <button type="button" class="admin-btn admin-btn-secondary" disabled title="Assign this inquiry to a staff member first"><i class="fas fa-comments" aria-hidden="true"></i> Message Assigned Staff</button>
+                                @endif
+                            @endif
                             <button type="button" class="admin-btn admin-btn-secondary" data-copy-contact data-contact="{{ $inquiry->name }}&#10;{{ $inquiry->email }}&#10;{{ $inquiry->phone }}"><i class="far fa-copy" aria-hidden="true"></i> Copy Contact</button>
                             <form method="POST" action="{{ route('admin.inquiries.destroy', $inquiry) }}" onsubmit="return confirm('Delete inquiry #{{ $inquiry->id }}?');">
                                 @csrf
@@ -408,6 +418,8 @@
             });
 
             refreshSelection();
+            const requestedInquiry = new URLSearchParams(window.location.search).get('open');
+            if (requestedInquiry) document.querySelector(`[data-open-inquiry="${CSS.escape(requestedInquiry)}"]`)?.click();
         })();
     </script>
 @endpush

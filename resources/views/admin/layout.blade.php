@@ -105,6 +105,12 @@
         </main>
     </div>
     @if (($currentAdmin ?? null))
+        <div class="admin-message-toast" data-message-toast role="status" aria-live="polite" hidden>
+            <span class="admin-message-toast-icon"><i class="fas fa-comments"></i></span>
+            <span><strong>New team message</strong><small data-message-toast-copy></small></span>
+            <a data-message-toast-link href="{{ route('admin.messages.index') }}">Open</a>
+            <button type="button" data-message-toast-close aria-label="Dismiss notification"><i class="fas fa-xmark"></i></button>
+        </div>
         <script>
             window.updateAdminUnread = count => {
                 document.querySelectorAll('[data-message-unread]').forEach(badge => {
@@ -112,11 +118,27 @@
                     badge.hidden = Number(count) < 1;
                 });
             };
+            let lastUnreadMessageId = 0;
+            let unreadInitialized = false;
+            const messageToast = document.querySelector('[data-message-toast]');
+            document.querySelector('[data-message-toast-close]')?.addEventListener('click', () => messageToast.hidden = true);
             window.setInterval(async () => {
-                if (document.hidden) return;
                 try {
                     const response = await fetch(@json(route('admin.messages.unread')), { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
-                    if (response.ok) window.updateAdminUnread((await response.json()).unread_count);
+                    if (!response.ok) return;
+                    const data = await response.json();
+                    window.updateAdminUnread(data.unread_count);
+                    const latest = data.latest_unread;
+                    const openConversation = document.querySelector('[data-message-thread]')?.dataset.conversationId;
+                    if (latest && unreadInitialized && latest.id > lastUnreadMessageId && String(latest.conversation_id) !== openConversation) {
+                        document.querySelector('[data-message-toast-copy]').textContent = `${latest.sender_name} sent you a message.`;
+                        document.querySelector('[data-message-toast-link]').href = @json(route('admin.messages.index')) + '?conversation=' + encodeURIComponent(latest.conversation_id);
+                        messageToast.hidden = false;
+                        clearTimeout(window.adminMessageToastTimer);
+                        window.adminMessageToastTimer = setTimeout(() => messageToast.hidden = true, 7000);
+                    }
+                    lastUnreadMessageId = latest?.id ?? 0;
+                    unreadInitialized = true;
                 } catch (_) {}
             }, 15000);
         </script>

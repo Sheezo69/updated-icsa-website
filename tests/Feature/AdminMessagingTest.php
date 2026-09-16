@@ -5,7 +5,10 @@ namespace Tests\Feature;
 use App\Models\Admin;
 use App\Models\AdminConversation;
 use App\Models\AdminMessage;
+use App\Models\ContactMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AdminMessagingTest extends TestCase
@@ -116,5 +119,118 @@ class AdminMessagingTest extends TestCase
         $this->withSession(['admin_id' => $owner->id])
             ->post(route('admin.messages.send'), ['recipient_id' => $staff->id, 'body' => str_repeat('x', 2001)])
             ->assertSessionHasErrors('body');
+    }
+
+    public function test_valid_attachments_are_private_and_invalid_files_are_rejected(): void
+    {
+        Storage::fake('local');
+        $owner = $this->account('owner', Admin::ROLE_ADMIN);
+        $staff = $this->account('staff', Admin::ROLE_STAFF);
+        $outsider = $this->account('outsider', Admin::ROLE_STAFF);
+
+        $this->withSession(['admin_id' => $owner->id])
+            ->post(route('admin.messages.send'), [
+                'recipient_id' => $staff->id,
+                'attachment' => UploadedFile::fake()->image('classroom.png'),
+            ])->assertRedirect();
+
+        $message = AdminMessage::query()->firstOrFail();
+        $this->assertSame('', $message->body);
+        $this->assertSame('classroom.png', $message->attachment_name);
+        Storage::disk('local')->assertExists($message->attachment_path);
+
+        $this->withSession(['admin_id' => $owner->id])
+            ->get(route('admin.messages.index', ['conversation' => $message->conversation_id]))
+            ->assertOk()->assertSee('classroom.png');
+
+        $this->withSession(['admin_id' => $owner->id])
+            ->post(route('admin.messages.send'), [
+                'conversation_id' => $message->conversation_id,
+                'attachment' => UploadedFile::fake()->create('guide.pdf', 100, 'application/pdf'),
+            ])->assertRedirect();
+        $this->assertDatabaseHas('admin_messages', ['attachment_name' => 'guide.pdf', 'attachment_mime' => 'application/pdf']);
+
+        $this->withSession(['admin_id' => $staff->id])
+            ->get(route('admin.messages.attachment', $message))
+            ->assertOk();
+
+        $this->withSession(['admin_id' => $outsider->id])
+            ->get(route('admin.messages.attachment', $message))
+            ->assertForbidden();
+
+        $this->withSession(['admin_id' => $owner->id])
+            ->post(route('admin.messages.send'), [
+                'recipient_id' => $staff->id,
+                'attachment' => UploadedFile::fake()->create('evil.svg', 50, 'image/svg+xml'),
+            ])->assertSessionHasErrors('attachment');
+
+        $this->withSession(['admin_id' => $owner->id])
+            ->post(route('admin.messages.send'), [
+                'recipient_id' => $staff->id,
+                'attachment' => UploadedFile::fake()->create('large.pdf', 5121, 'application/pdf'),
+            ])->assertSessionHasErrors('attachment');
+
+        $this->assertSame(2, AdminMessage::query()->count());
+    }
+
+    public function test_archive_and_pin_are_personal_and_new_messages_restore_archived_chat(): void
+    {
+        $owner = $this->account('owner', Admin::ROLE_ADMIN);
+        $staff = $this->account('staff', Admin::ROLE_STAFF);
+
+        $this->withSession(['admin_id' => $owner->id])
+            ->post(route('admin.messages.send'), ['recipient_id' => $staff->id, 'body' => 'First message'])
+            ->assertRedirect();
+        $conversation = AdminConversation::query()->firstOrFail();
+
+        $this->withSession(['admin_id' => $owner->id])
+            ->patch(route('admin.messages.pin', $conversation))
+            ->assertRedirect();
+        $this->assertTrue($conversation->fresh()->isPinnedFor($owner->id));
+        $this->assertFalse($conversation->fresh()->isPinnedFor($staff->id));
+
+        $this->withSession(['admin_id' => $staff->id])
+            ->patch(route('admin.messages.archive', $conversation))
+            ->assertRedirect();
+        $this->assertTrue($conversation->fresh()->isArchivedFor($staff->id));
+        $this->assertFalse($conversation->fresh()->isArchivedFor($owner->id));
+
+        $this->withSession(['admin_id' => $staff->id])
+            ->get(route('admin.messages.index', ['box' => 'archived']))
+            ->assertOk()->assertSee('First message');
+
+        $this->withSession(['admin_id' => $owner->id])
+            ->post(route('admin.messages.send'), ['conversation_id' => $conversation->id, 'body' => 'New work'])
+            ->assertRedirect();
+        $this->assertFalse($conversation->fresh()->isArchivedFor($staff->id));
+    }
+
+    public function test_owner_can_message_assigned_staff_directly_from_an_inquiry(): void
+    {
+        $owner = $this->account('owner', Admin::ROLE_ADMIN);
+        $staff = $this->account('staff', Admin::ROLE_STAFF);
+        $inquiry = ContactMessage::query()->create([
+            'name' => 'Visitor', 'email' => 'visitor@example.com', 'phone' => '50000000',
+            'status' => 'new', 'assigned_to' => $staff->id,
+        ]);
+
+        $this->withSession(['admin_id' => $staff->id])
+            ->post(route('admin.inquiries.message-assignee', $inquiry))
+            ->assertRedirect(route('admin.dashboard'));
+
+        $this->withSession(['admin_id' => $owner->id])
+            ->post(route('admin.inquiries.message-assignee', $inquiry))
+            ->assertRedirect();
+
+        $message = AdminMessage::query()->firstOrFail();
+        $this->assertStringContainsString('inquiry #'.$inquiry->id, $message->body);
+        $this->assertStringContainsString('open='.$inquiry->id, $message->body);
+
+        $this->withSession(['admin_id' => $staff->id])
+            ->get(route('admin.messages.unread'))
+            ->assertOk()
+            ->assertJsonPath('unread_count', 1)
+            ->assertJsonPath('latest_unread.sender_name', 'owner')
+            ->assertDontSee('Please review inquiry #');
     }
 }

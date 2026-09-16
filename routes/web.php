@@ -63,6 +63,9 @@ Route::prefix($adminPrefix)->group(function (): void {
         Route::get('/messages', [MessageController::class, 'index'])->name('admin.messages.index');
         Route::post('/messages', [MessageController::class, 'send'])->middleware('throttle:30,1')->name('admin.messages.send');
         Route::get('/messages/unread', [MessageController::class, 'unread'])->name('admin.messages.unread');
+        Route::get('/messages/attachments/{message}', [MessageController::class, 'attachment'])->name('admin.messages.attachment');
+        Route::patch('/messages/{conversation}/archive', [MessageController::class, 'archive'])->name('admin.messages.archive');
+        Route::patch('/messages/{conversation}/pin', [MessageController::class, 'pin'])->name('admin.messages.pin');
         Route::get('/messages/{conversation}/poll', [MessageController::class, 'poll'])->name('admin.messages.poll');
 
         Route::middleware('admin.permission:courses')->group(function (): void {
@@ -97,6 +100,7 @@ Route::prefix($adminPrefix)->group(function (): void {
         Route::put('/settings/preferences', [SettingsController::class, 'updatePreferences'])->name('admin.settings.preferences');
 
         Route::middleware('admin.owner')->group(function (): void {
+            Route::post('/inquiries/{inquiry}/message-assignee', [MessageController::class, 'messageAssignee'])->middleware('throttle:12,1')->name('admin.inquiries.message-assignee');
             Route::get('/activity', [ActivityController::class, 'index'])->name('admin.activity.index');
             Route::get('/activity/export', [ActivityController::class, 'export'])->name('admin.activity.export');
             Route::get('/users', [UserController::class, 'index'])->name('admin.users.index');

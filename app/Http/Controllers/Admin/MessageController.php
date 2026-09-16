@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\AdminConversation;
 use App\Models\AdminMessage;
+use App\Models\ContactMessage;
+use App\Support\AdminActivityLogger;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -13,7 +15,10 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class MessageController extends Controller
 {
@@ -22,9 +27,20 @@ class MessageController extends Controller
         /** @var Admin $currentAdmin */
         $currentAdmin = $request->attributes->get('currentAdmin');
         $search = trim($request->string('search')->toString());
+        $box = $request->string('box')->toString() === 'archived' ? 'archived' : 'active';
+        $archiveColumn = 'participant_one_archived_at';
+        $otherArchiveColumn = 'participant_two_archived_at';
 
         $conversations = AdminConversation::query()
             ->forAdmin($currentAdmin->id)
+            ->where(function (Builder $query) use ($currentAdmin, $box, $archiveColumn, $otherArchiveColumn): void {
+                $operator = $box === 'archived' ? 'whereNotNull' : 'whereNull';
+                $query->where(function (Builder $one) use ($currentAdmin, $archiveColumn, $operator): void {
+                    $one->where('participant_one_id', $currentAdmin->id)->{$operator}($archiveColumn);
+                })->orWhere(function (Builder $two) use ($currentAdmin, $otherArchiveColumn, $operator): void {
+                    $two->where('participant_two_id', $currentAdmin->id)->{$operator}($otherArchiveColumn);
+                });
+            })
             ->with('latestMessage')
             ->withCount(['messages as unread_count' => function (Builder $query) use ($currentAdmin): void {
                 $query->whereNull('read_at')->where('sender_id', '!=', $currentAdmin->id);
@@ -35,6 +51,7 @@ class MessageController extends Controller
                         ->orWhere('participant_two_name', 'like', '%'.$search.'%');
                 });
             })
+            ->orderByRaw('CASE WHEN participant_one_id = ? THEN participant_one_pinned_at ELSE participant_two_pinned_at END IS NULL', [$currentAdmin->id])
             ->orderByDesc('last_message_at')
             ->orderByDesc('id')
             ->get();
@@ -76,6 +93,7 @@ class MessageController extends Controller
             'otherParticipant',
             'contacts',
             'search',
+            'box',
             'adminUnreadMessages',
         ));
     }
@@ -87,11 +105,12 @@ class MessageController extends Controller
         $data = $request->validate([
             'conversation_id' => ['nullable', 'required_without:recipient_id', 'integer'],
             'recipient_id' => ['nullable', 'required_without:conversation_id', 'integer', 'exists:admins,id'],
-            'body' => ['required', 'string', 'max:2000'],
+            'body' => ['nullable', 'required_without:attachment', 'string', 'max:2000'],
+            'attachment' => ['nullable', 'file', 'max:5120', 'mimes:jpg,jpeg,png,webp,gif,pdf', 'mimetypes:image/jpeg,image/png,image/webp,image/gif,application/pdf'],
         ]);
 
-        $body = trim($data['body']);
-        if ($body === '') {
+        $body = trim((string) ($data['body'] ?? ''));
+        if ($body === '' && ! $request->hasFile('attachment')) {
             throw ValidationException::withMessages(['body' => 'Write a message before sending.']);
         }
 
@@ -110,15 +129,41 @@ class MessageController extends Controller
             $conversation = $this->conversationBetween($currentAdmin, $recipient);
         }
 
-        DB::transaction(function () use ($conversation, $currentAdmin, $body): void {
-            $message = $conversation->messages()->create([
-                'sender_id' => $currentAdmin->id,
-                'sender_name' => $currentAdmin->username,
-                'body' => $body,
-            ]);
+        $attachment = [];
+        if ($file = $request->file('attachment')) {
+            $path = $file->store('admin-message-attachments/'.$conversation->id, 'local');
+            if (! is_string($path) || $path === '') {
+                throw ValidationException::withMessages(['attachment' => 'The attachment could not be saved. Please try again.']);
+            }
+            $attachment = [
+                'attachment_path' => $path,
+                'attachment_name' => Str::limit(basename(str_replace('\\', '/', $file->getClientOriginalName())), 255, ''),
+                'attachment_mime' => $file->getMimeType(),
+                'attachment_size' => $file->getSize(),
+            ];
+        }
 
-            $conversation->update(['last_message_at' => $message->created_at]);
-        });
+        try {
+            DB::transaction(function () use ($conversation, $currentAdmin, $body, $attachment, $recipient): void {
+                $message = $conversation->messages()->create([
+                    'sender_id' => $currentAdmin->id,
+                    'sender_name' => $currentAdmin->username,
+                    'body' => $body,
+                    ...$attachment,
+                ]);
+
+                $conversation->update([
+                    'last_message_at' => $message->created_at,
+                    $conversation->preferenceColumn($currentAdmin->id, 'archived_at') => null,
+                    $conversation->preferenceColumn($recipient->id, 'archived_at') => null,
+                ]);
+            });
+        } catch (\Throwable $exception) {
+            if (isset($attachment['attachment_path'])) {
+                Storage::disk('local')->delete($attachment['attachment_path']);
+            }
+            throw $exception;
+        }
 
         return redirect()->route('admin.messages.index', ['conversation' => $conversation->id]);
     }
@@ -152,7 +197,90 @@ class MessageController extends Controller
         /** @var Admin $currentAdmin */
         $currentAdmin = $request->attributes->get('currentAdmin');
 
-        return response()->json(['unread_count' => Schema::hasTable('admin_messages') ? $this->unreadCount($currentAdmin) : 0]);
+        if (! Schema::hasTable('admin_messages') || ! Schema::hasTable('admin_conversations') || $currentAdmin->notify_messages === false) {
+            return response()->json(['unread_count' => 0, 'latest_unread' => null]);
+        }
+
+        $latest = AdminMessage::query()->whereNull('read_at')
+            ->where('sender_id', '!=', $currentAdmin->id)
+            ->whereHas('conversation', fn (Builder $query) => $query->forAdmin($currentAdmin->id))
+            ->latest('id')->first();
+
+        return response()->json([
+            'unread_count' => $this->unreadCount($currentAdmin),
+            'latest_unread' => $latest ? [
+                'id' => $latest->id,
+                'conversation_id' => $latest->conversation_id,
+                'sender_name' => $latest->sender_name,
+            ] : null,
+        ]);
+    }
+
+    public function attachment(Request $request, AdminMessage $message): BinaryFileResponse
+    {
+        /** @var Admin $currentAdmin */
+        $currentAdmin = $request->attributes->get('currentAdmin');
+        abort_unless($message->conversation?->includes($currentAdmin->id), 403);
+        abort_unless($message->attachment_path && Storage::disk('local')->exists($message->attachment_path), 404);
+
+        return response()->download(
+            Storage::disk('local')->path($message->attachment_path),
+            $message->attachment_name ?: 'attachment',
+            ['Content-Type' => $message->attachment_mime ?: 'application/octet-stream', 'X-Content-Type-Options' => 'nosniff'],
+        );
+    }
+
+    public function archive(Request $request, AdminConversation $conversation, AdminActivityLogger $audit): RedirectResponse
+    {
+        /** @var Admin $currentAdmin */
+        $currentAdmin = $request->attributes->get('currentAdmin');
+        abort_unless($conversation->includes($currentAdmin->id), 403);
+        $before = $conversation->isArchivedFor($currentAdmin->id);
+        $archived = ! $before;
+        $conversation->update([$conversation->preferenceColumn($currentAdmin->id, 'archived_at') => $archived ? now() : null]);
+        $audit->record($request, $archived ? 'conversation.archived' : 'conversation.restored', 'messages', $archived ? 'Archived a conversation.' : 'Restored a conversation.', AdminConversation::class, $conversation->id, $conversation->otherParticipantName($currentAdmin->id), ['archived' => $before], ['archived' => $archived]);
+
+        return redirect()->route('admin.messages.index', $archived ? [] : ['conversation' => $conversation->id]);
+    }
+
+    public function pin(Request $request, AdminConversation $conversation, AdminActivityLogger $audit): RedirectResponse
+    {
+        /** @var Admin $currentAdmin */
+        $currentAdmin = $request->attributes->get('currentAdmin');
+        abort_unless($conversation->includes($currentAdmin->id), 403);
+        $before = $conversation->isPinnedFor($currentAdmin->id);
+        $pinned = ! $before;
+        $conversation->update([$conversation->preferenceColumn($currentAdmin->id, 'pinned_at') => $pinned ? now() : null]);
+        $audit->record($request, $pinned ? 'conversation.pinned' : 'conversation.unpinned', 'messages', $pinned ? 'Pinned a conversation.' : 'Unpinned a conversation.', AdminConversation::class, $conversation->id, $conversation->otherParticipantName($currentAdmin->id), ['pinned' => $before], ['pinned' => $pinned]);
+
+        return redirect()->route('admin.messages.index', ['conversation' => $conversation->id, ...($request->string('box')->toString() === 'archived' ? ['box' => 'archived'] : [])]);
+    }
+
+    public function messageAssignee(Request $request, ContactMessage $inquiry, AdminActivityLogger $audit): RedirectResponse
+    {
+        /** @var Admin $currentAdmin */
+        $currentAdmin = $request->attributes->get('currentAdmin');
+        $recipient = $inquiry->assigned_to ? Admin::query()->find($inquiry->assigned_to) : null;
+        if (! $recipient || $recipient->role !== Admin::ROLE_STAFF) {
+            return back()->with('error', 'Assign this inquiry to a staff member first.');
+        }
+
+        $conversation = $this->conversationBetween($currentAdmin, $recipient);
+        DB::transaction(function () use ($conversation, $currentAdmin, $recipient, $inquiry): void {
+            $message = $conversation->messages()->create([
+                'sender_id' => $currentAdmin->id,
+                'sender_name' => $currentAdmin->username,
+                'body' => 'Please review inquiry #'.$inquiry->id.'. '.route('admin.inquiries.index', ['open' => $inquiry->id]),
+            ]);
+            $conversation->update([
+                'last_message_at' => $message->created_at,
+                $conversation->preferenceColumn($currentAdmin->id, 'archived_at') => null,
+                $conversation->preferenceColumn($recipient->id, 'archived_at') => null,
+            ]);
+        });
+        $audit->record($request, 'inquiry.staff_messaged', 'inquiries', 'Messaged the assigned staff member about an inquiry.', ContactMessage::class, $inquiry->id, '#'.$inquiry->id.' '.$inquiry->name, null, ['assigned_staff' => $recipient->username]);
+
+        return redirect()->route('admin.messages.index', ['conversation' => $conversation->id]);
     }
 
     private function conversationBetween(Admin $sender, Admin $recipient): AdminConversation
@@ -203,6 +331,12 @@ class MessageController extends Controller
             'read' => $message->read_at !== null,
             'time' => optional($message->created_at)->format('h:i A'),
             'datetime' => optional($message->created_at)->toIso8601String(),
+            'attachment' => $message->attachment_path ? [
+                'name' => $message->attachment_name,
+                'mime' => $message->attachment_mime,
+                'size' => $message->attachment_size,
+                'url' => route('admin.messages.attachment', $message),
+            ] : null,
         ];
     }
 }

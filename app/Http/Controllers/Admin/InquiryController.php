@@ -22,6 +22,10 @@ class InquiryController extends Controller
 
         $this->applyAssignmentFilter($query, $request, $currentAdmin);
 
+        if ($request->integer('open') > 0) {
+            $query->whereKey($request->integer('open'));
+        }
+
         if ($status = $request->string('status')->toString()) {
             $query->where('status', $status);
         }

@@ -15,12 +15,20 @@ class AdminConversation extends Model
         'participant_one_name',
         'participant_two_name',
         'last_message_at',
+        'participant_one_archived_at',
+        'participant_two_archived_at',
+        'participant_one_pinned_at',
+        'participant_two_pinned_at',
     ];
 
     protected $casts = [
         'participant_one_id' => 'integer',
         'participant_two_id' => 'integer',
         'last_message_at' => 'datetime',
+        'participant_one_archived_at' => 'datetime',
+        'participant_two_archived_at' => 'datetime',
+        'participant_one_pinned_at' => 'datetime',
+        'participant_two_pinned_at' => 'datetime',
     ];
 
     public function messages(): HasMany
@@ -58,5 +66,22 @@ class AdminConversation extends Model
         return $this->participant_one_id === $adminId
             ? $this->participant_two_name
             : $this->participant_one_name;
+    }
+
+    public function preferenceColumn(int $adminId, string $preference): string
+    {
+        abort_unless($this->includes($adminId) && in_array($preference, ['archived_at', 'pinned_at'], true), 403);
+
+        return ($this->participant_one_id === $adminId ? 'participant_one_' : 'participant_two_').$preference;
+    }
+
+    public function isArchivedFor(int $adminId): bool
+    {
+        return $this->{$this->preferenceColumn($adminId, 'archived_at')} !== null;
+    }
+
+    public function isPinnedFor(int $adminId): bool
+    {
+        return $this->{$this->preferenceColumn($adminId, 'pinned_at')} !== null;
     }
 }
