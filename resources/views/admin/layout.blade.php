@@ -47,6 +47,9 @@
                     </a>
                 @endif
                 @if (($currentAdmin ?? null)?->isOwner())
+                    <a href="{{ route('admin.analytics.index') }}" class="admin-sidebar-link {{ request()->routeIs('admin.analytics.*') ? 'is-active' : '' }}">
+                        <i class="fas fa-chart-pie"></i> Analytics
+                    </a>
                     <a href="{{ route('admin.users.index') }}" class="admin-sidebar-link {{ request()->routeIs('admin.users.*') ? 'is-active' : '' }}">
                         <i class="fas fa-users"></i> Users
                     </a>

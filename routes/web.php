@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ActivityController;
+use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\CourseController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -16,19 +17,21 @@ use Illuminate\Support\Facades\Route;
 
 $adminPrefix = config('admin.path', 'secure-staff-portal');
 
-Route::get('/', [SiteController::class, 'home'])->name('site.home');
-Route::get('/index.html', [SiteController::class, 'home']);
-Route::get('/about', [SiteController::class, 'about'])->name('site.about');
-Route::get('/about.html', [SiteController::class, 'about']);
-Route::get('/courses', [SiteController::class, 'courses'])->name('site.courses');
-Route::get('/courses.html', [SiteController::class, 'courses']);
-Route::get('/contact', [SiteController::class, 'contact'])->name('site.contact');
-Route::get('/contact.html', [SiteController::class, 'contact']);
-Route::get('/courses/{slug}', [SiteController::class, 'course'])
-    ->where('slug', '[A-Za-z0-9\-]+')
-    ->name('site.course');
-Route::get('/courses/{slug}.html', [SiteController::class, 'course'])
-    ->where('slug', '[A-Za-z0-9\-]+');
+Route::middleware('analytics')->group(function (): void {
+    Route::get('/', [SiteController::class, 'home'])->name('site.home');
+    Route::get('/index.html', [SiteController::class, 'home']);
+    Route::get('/about', [SiteController::class, 'about'])->name('site.about');
+    Route::get('/about.html', [SiteController::class, 'about']);
+    Route::get('/courses', [SiteController::class, 'courses'])->name('site.courses');
+    Route::get('/courses.html', [SiteController::class, 'courses']);
+    Route::get('/contact', [SiteController::class, 'contact'])->name('site.contact');
+    Route::get('/contact.html', [SiteController::class, 'contact']);
+    Route::get('/courses/{slug}', [SiteController::class, 'course'])
+        ->where('slug', '[A-Za-z0-9\-]+')
+        ->name('site.course');
+    Route::get('/courses/{slug}.html', [SiteController::class, 'course'])
+        ->where('slug', '[A-Za-z0-9\-]+');
+});
 
 Route::get('/api/csrf-token.php', [FormController::class, 'csrfToken'])->name('api.csrf');
 Route::post('/api/contact-submit.php', [FormController::class, 'contact'])->name('api.contact');
@@ -100,6 +103,7 @@ Route::prefix($adminPrefix)->group(function (): void {
         Route::put('/settings/preferences', [SettingsController::class, 'updatePreferences'])->name('admin.settings.preferences');
 
         Route::middleware('admin.owner')->group(function (): void {
+            Route::get('/analytics', [AnalyticsController::class, 'index'])->name('admin.analytics.index');
             Route::post('/inquiries/{inquiry}/message-assignee', [MessageController::class, 'messageAssignee'])->middleware('throttle:12,1')->name('admin.inquiries.message-assignee');
             Route::get('/activity', [ActivityController::class, 'index'])->name('admin.activity.index');
             Route::get('/activity/export', [ActivityController::class, 'export'])->name('admin.activity.export');
