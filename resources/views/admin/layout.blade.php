@@ -47,6 +47,9 @@
                     </a>
                 @endif
                 @if (($currentAdmin ?? null)?->isOwner())
+                    <a href="{{ route('admin.mission-control.index') }}" class="admin-sidebar-link admin-sidebar-mission {{ request()->routeIs('admin.mission-control.*') ? 'is-active' : '' }}">
+                        <i class="fas fa-satellite-dish"></i> Mission Control <span>LIVE</span>
+                    </a>
                     <a href="{{ route('admin.analytics.index') }}" class="admin-sidebar-link {{ request()->routeIs('admin.analytics.*') ? 'is-active' : '' }}">
                         <i class="fas fa-chart-pie"></i> Analytics
                     </a>

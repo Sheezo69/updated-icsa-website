@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\ContactMessage;
 use App\Support\CourseFileRepository;
 use App\Support\InquiryMailer;
-use Illuminate\Http\Request;
+use App\Support\LeadIntelligence;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -69,7 +71,10 @@ class FormController extends Controller
                 'message' => $this->nullableTrimmed($request->input('message'), 4000),
                 'status' => ContactMessage::STATUS_NEW,
                 'form_type' => 'Contact Form',
+                ...$this->analyticsFields($request),
             ]);
+
+            app(LeadIntelligence::class)->refresh($contactMessage);
 
             app(InquiryMailer::class)->sendBoth($contactMessage);
         } catch (\Throwable $exception) {
@@ -127,7 +132,10 @@ class FormController extends Controller
                 'message' => $this->nullableTrimmed($request->input('message'), 4000),
                 'status' => ContactMessage::STATUS_NEW,
                 'form_type' => 'Course Enrollment',
+                ...$this->analyticsFields($request),
             ]);
+
+            app(LeadIntelligence::class)->refresh($contactMessage);
 
             app(InquiryMailer::class)->sendBoth($contactMessage);
         } catch (\Throwable $exception) {
@@ -199,5 +207,19 @@ class FormController extends Controller
         $trimmed = mb_substr(trim((string) $value), 0, $maxLength);
 
         return $trimmed !== '' ? $trimmed : null;
+    }
+
+    private function analyticsVisitorHash(Request $request): ?string
+    {
+        $token = trim((string) $request->cookie('_icsa_vid'));
+
+        return preg_match('/^[a-f0-9]{64}$/', $token) === 1 ? hash('sha256', $token) : null;
+    }
+
+    private function analyticsFields(Request $request): array
+    {
+        return Schema::hasColumn('contact_messages', 'analytics_visitor_hash')
+            ? ['analytics_visitor_hash' => $this->analyticsVisitorHash($request)]
+            : [];
     }
 }

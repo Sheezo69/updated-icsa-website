@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\InquiryController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\MessageController;
+use App\Http\Controllers\Admin\MissionControlController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Api\FormController;
@@ -103,6 +104,9 @@ Route::prefix($adminPrefix)->group(function (): void {
         Route::put('/settings/preferences', [SettingsController::class, 'updatePreferences'])->name('admin.settings.preferences');
 
         Route::middleware('admin.owner')->group(function (): void {
+            Route::get('/mission-control', [MissionControlController::class, 'index'])->name('admin.mission-control.index');
+            Route::get('/mission-control/snapshot', [MissionControlController::class, 'snapshot'])->name('admin.mission-control.snapshot');
+            Route::post('/mission-control/automate', [MissionControlController::class, 'automate'])->middleware('throttle:6,1')->name('admin.mission-control.automate');
             Route::get('/analytics', [AnalyticsController::class, 'index'])->name('admin.analytics.index');
             Route::post('/inquiries/{inquiry}/message-assignee', [MessageController::class, 'messageAssignee'])->middleware('throttle:12,1')->name('admin.inquiries.message-assignee');
             Route::get('/activity', [ActivityController::class, 'index'])->name('admin.activity.index');

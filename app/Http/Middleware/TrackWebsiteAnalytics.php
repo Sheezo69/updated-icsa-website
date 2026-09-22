@@ -48,7 +48,7 @@ class TrackWebsiteAnalytics
                 'operating_system' => $operatingSystem,
                 'country_code' => $this->countryCode($request),
                 'is_signed_in' => auth()->check(),
-                'visited_at' => now(),
+                'visited_at' => now('UTC'),
             ]);
         } catch (Throwable $exception) {
             report($exception);

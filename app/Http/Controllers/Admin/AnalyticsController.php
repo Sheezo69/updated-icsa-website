@@ -72,7 +72,7 @@ class AnalyticsController extends Controller
 
     private function period(string $range): array
     {
-        $end = now()->endOfDay();
+        $end = now('UTC')->endOfDay();
 
         return match ($range) {
             '7d' => [$end->copy()->subDays(6)->startOfDay(), $end, 'day'],
