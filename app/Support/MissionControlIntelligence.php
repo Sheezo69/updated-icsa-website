@@ -385,15 +385,22 @@ class MissionControlIntelligence
                 });
         }
 
-        $visibleNodes = collect(['campaign' => 4, 'visitor' => 6, 'course' => 6, 'inquiry' => 6, 'staff' => 5])
-            ->flatMap(fn (int $limit, string $type): Collection => $nodes->where('type', $type)->take($limit))
-            ->values();
-        $visibleIds = $visibleNodes->pluck('id')->flip();
+        $uniqueEdges = $edges->unique(fn (array $edge): string => $edge['from'].'>'.$edge['to'])->values();
+        $visibleEdges = collect();
+        foreach (['acquired' => 4, 'viewed' => 6, 'explored' => 6, 'submitted' => 6, 'converted' => 6, 'assigned' => 5] as $relation => $limit) {
+            $visibleEdges->push(...$uniqueEdges->where('label', $relation)->take($limit)->all());
+        }
+        $visibleEdges = $visibleEdges->unique(fn (array $edge): string => $edge['from'].'>'.$edge['to'])->values();
+        $visibleIds = $visibleEdges->flatMap(fn (array $edge): array => [$edge['from'], $edge['to']])->unique()->flip();
+        $visibleNodes = $nodes->filter(fn (array $node): bool => $visibleIds->has($node['id']))->values();
+
+        if ($visibleNodes->isEmpty()) {
+            $visibleNodes = $nodes->take(12)->values();
+        }
 
         return [
             'nodes' => $visibleNodes->all(),
-            'edges' => $edges->filter(fn (array $edge): bool => $visibleIds->has($edge['from']) && $visibleIds->has($edge['to']))
-                ->unique(fn (array $edge): string => $edge['from'].'>'.$edge['to'])->values()->all(),
+            'edges' => $visibleEdges->all(),
         ];
     }
 

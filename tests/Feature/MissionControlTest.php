@@ -76,9 +76,17 @@ class MissionControlTest extends TestCase
             ->assertOk()
             ->assertJsonPath('stats.live_visitors', 1)
             ->assertJsonPath('stats.hot_leads', 1);
-        $this->withSession(['admin_id' => $owner->id])
+        $snapshot = $this->withSession(['admin_id' => $owner->id])
             ->get(route('admin.mission-control.snapshot'))
             ->assertJsonStructure(['operations_map' => ['nodes', 'edges']]);
+        $map = $snapshot->json('operations_map');
+        $connectedIds = collect($map['edges'])->flatMap(fn (array $edge): array => [$edge['from'], $edge['to']])->unique();
+        $this->assertNotEmpty($map['edges']);
+        $this->assertEqualsCanonicalizing(collect($map['nodes'])->pluck('id')->all(), $connectedIds->all());
+        $this->assertContains('campaign', collect($map['nodes'])->pluck('type'));
+        $this->assertContains('visitor', collect($map['nodes'])->pluck('type'));
+        $this->assertContains('course', collect($map['nodes'])->pluck('type'));
+        $this->assertContains('inquiry', collect($map['nodes'])->pluck('type'));
 
         $this->withSession(['admin_id' => $staff->id])
             ->get(route('admin.mission-control.index'))

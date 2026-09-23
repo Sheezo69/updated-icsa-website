@@ -259,7 +259,8 @@
         const inspect = node => {
             selectedNodeId = node.id;
             const color = palette[node.type];
-            const metrics = (node.metrics || []).map(item => `<div><small>${escape(item.label)}</small><strong>${escape(item.value)}</strong></div>`).join('');
+            const connectionCount = graphData.edges.filter(edge => edge.from === node.id || edge.to === node.id).length;
+            const metrics = [...(node.metrics || []), { label:'Connections', value:String(connectionCount) }].slice(0, 3).map(item => `<div><small>${escape(item.label)}</small><strong>${escape(item.value)}</strong></div>`).join('');
             const journey = (node.journey || []).map((step, index) => `<li><i>${index + 1}</i><span>${escape(step)}</span></li>`).join('');
             consoleNode.innerHTML = `<div class="mission-console-top" style="--node-color:${color}"><span>${glyphs[node.type]}</span><div><small>${escape(node.eyebrow)}</small><h3>${escape(node.label)}</h3></div><i></i></div><p>${escape(node.summary)}</p>${metrics ? `<div class="mission-console-metrics">${metrics}</div>` : ''}<div class="mission-console-journey"><small>CONNECTED JOURNEY</small><ol>${journey || '<li><span>No journey events yet.</span></li>'}</ol></div>${node.action ? `<a href="${escape(node.action.url)}">${escape(node.action.label)} <i class="fas fa-arrow-up-right-from-square"></i></a>` : '<span class="mission-console-passive"><i class="fas fa-shield-halved"></i> Observation signal · no direct action</span>'}`;
             nodeElements.forEach((element, id) => element.classList.toggle('is-selected', id === node.id));
@@ -282,7 +283,9 @@
                 selectedNodeId = null;
                 consoleNode.innerHTML = '<div class="mission-node-console-idle"><span><i class="fas fa-satellite-dish"></i></span><small>SIGNAL INSPECTOR</small><h3>Layer awaiting data</h3><p>This signal type will appear automatically when matching live activity is recorded.</p></div>';
             }
-            graphData.edges.filter(edge => activeIds.has(edge.from) && activeIds.has(edge.to)).forEach((edge, index) => {
+            const activeEdges = graphData.edges.filter(edge => activeIds.has(edge.from) && activeIds.has(edge.to));
+            const particleStride = Math.max(1, Math.ceil(activeEdges.length / 10));
+            activeEdges.forEach((edge, index) => {
                 const from = positions.get(edge.from), to = positions.get(edge.to);
                 if (!from || !to) return;
                 const path = document.createElementNS(ns, 'path');
@@ -291,7 +294,7 @@
                 path.setAttribute('class', 'mission-map-edge'); path.setAttribute('data-edge', index);
                 edgeLayer.appendChild(path); edgeElements.push({ element:path, edge });
                 let pulse = null;
-                if (index < 10) {
+                if (index % particleStride === 0) {
                     pulse = document.createElementNS(ns, 'circle');
                     pulse.setAttribute('r', '2.4'); pulse.setAttribute('class', 'mission-map-particle');
                     const motion = document.createElementNS(ns, 'animateMotion');
