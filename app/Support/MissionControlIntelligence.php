@@ -53,6 +53,8 @@ class MissionControlIntelligence
         })->sortByDesc('score')->values();
 
         $traffic = $this->trafficStats($analyticsReady);
+        $staff = $this->staffWorkload($active);
+        $demand = $this->courseDemand($analyticsReady);
         $alerts = $this->alerts($active, $leadRows, $traffic);
 
         return [
@@ -68,8 +70,9 @@ class MissionControlIntelligence
             'journeys' => $this->journeys($analyticsReady),
             'countries' => $this->countries($analyticsReady),
             'feed' => $this->feed($analyticsReady, $activityReady),
-            'staff' => $this->staffWorkload($active),
-            'demand' => $this->courseDemand($analyticsReady),
+            'staff' => $staff,
+            'demand' => $demand,
+            'operationsMap' => $this->operationsMap($analyticsReady, $active, $leadRows, $staff, $demand),
             'alerts' => $alerts,
             'briefing' => $this->briefing($traffic, $leadRows, $active, $alerts),
         ];
@@ -258,6 +261,140 @@ class MissionControlIntelligence
         }
 
         return $alerts;
+    }
+
+    private function operationsMap(bool $analyticsReady, Collection $active, Collection $leads, Collection $staff, Collection $demand): array
+    {
+        $nodes = collect();
+        $edges = collect();
+        $nodeIds = [];
+        $addNode = function (array $node) use ($nodes, &$nodeIds): void {
+            if (isset($nodeIds[$node['id']])) {
+                $index = $nodeIds[$node['id']];
+                $nodes->put($index, array_replace($nodes->get($index), $node));
+
+                return;
+            }
+            $nodeIds[$node['id']] = $nodes->count();
+            $nodes->push($node);
+        };
+        $addEdge = function (string $from, string $to, string $label) use ($edges): void {
+            $edges->push(['from' => $from, 'to' => $to, 'label' => $label]);
+        };
+
+        $leadById = $leads->keyBy('id');
+        $active->take(8)->each(function (ContactMessage $inquiry) use ($addNode, $addEdge, $leadById): void {
+            $lead = $leadById->get($inquiry->id, []);
+            $inquiryId = 'inquiry:'.$inquiry->id;
+            $courseSlug = Str::slug($inquiry->course_interest ?: 'general-inquiry');
+            $courseId = 'course:'.$courseSlug;
+            $addNode([
+                'id' => $inquiryId, 'type' => 'inquiry', 'label' => $inquiry->name,
+                'eyebrow' => 'Inquiry #'.$inquiry->id,
+                'summary' => ($inquiry->course_interest ?: 'General inquiry').' · '.Str::headline($inquiry->status),
+                'metrics' => array_values(array_filter([
+                    isset($lead['score']) ? ['label' => 'Intent', 'value' => $lead['score'].'/100'] : null,
+                    ['label' => 'Temperature', 'value' => $lead['temperature'] ?? 'Unscored'],
+                    ['label' => 'Owner', 'value' => $inquiry->assignedTo?->username ?: 'Unassigned'],
+                ])),
+                'journey' => array_values(array_filter(['Form submitted', $inquiry->course_interest, $inquiry->assignedTo ? 'Assigned to '.$inquiry->assignedTo->username : 'Awaiting assignment'])),
+                'action' => ['label' => 'Open inquiry', 'url' => route('admin.inquiries.index', ['open' => $inquiry->id])],
+                'signal' => (int) ($lead['score'] ?? 45),
+            ]);
+            $addNode([
+                'id' => $courseId, 'type' => 'course', 'label' => Str::headline($inquiry->course_interest ?: 'General inquiry'),
+                'eyebrow' => 'Course signal', 'summary' => 'Connected to active inquiry demand.',
+                'metrics' => [['label' => 'Active link', 'value' => $inquiry->name]],
+                'journey' => ['Course interest', 'Inquiry submitted'], 'signal' => 55,
+            ]);
+            $addEdge($courseId, $inquiryId, 'converted');
+            if ($inquiry->assignedTo) {
+                $staffId = 'staff:'.$inquiry->assignedTo->id;
+                $addNode([
+                    'id' => $staffId, 'type' => 'staff', 'label' => $inquiry->assignedTo->username,
+                    'eyebrow' => 'Staff operator', 'summary' => 'Owns active inquiry workload.',
+                    'metrics' => [], 'journey' => ['Inquiry assigned', 'Response in progress'], 'signal' => 50,
+                ]);
+                $addEdge($inquiryId, $staffId, 'assigned');
+            }
+            if ($inquiry->analytics_visitor_hash) {
+                $visitorId = 'visitor:'.substr($inquiry->analytics_visitor_hash, 0, 12);
+                $addNode([
+                    'id' => $visitorId, 'type' => 'visitor', 'label' => 'Visitor '.strtoupper(substr($inquiry->analytics_visitor_hash, 0, 6)),
+                    'eyebrow' => 'Anonymous visitor', 'summary' => 'Privacy-safe journey linked to an inquiry.',
+                    'metrics' => [['label' => 'Page views', 'value' => (string) ($lead['views'] ?? 0)]],
+                    'journey' => ['Anonymous visit', 'Course interest', 'Inquiry submitted'], 'signal' => 65,
+                ]);
+                $addEdge($visitorId, $courseId, 'explored');
+                $addEdge($visitorId, $inquiryId, 'submitted');
+            }
+        });
+
+        $staff->take(6)->each(function (array $member) use ($addNode): void {
+            $addNode([
+                'id' => 'staff:'.$member['id'], 'type' => 'staff', 'label' => $member['name'],
+                'eyebrow' => 'Staff operator', 'summary' => $member['active'].' active assignments · '.$member['overdue'].' overdue',
+                'metrics' => [['label' => 'Active', 'value' => (string) $member['active']], ['label' => 'New', 'value' => (string) $member['new']], ['label' => 'Overdue', 'value' => (string) $member['overdue']]],
+                'journey' => ['Assigned leads', 'Follow-up queue'], 'signal' => max(25, min(100, $member['active'] * 15)),
+            ]);
+        });
+
+        $demand->take(6)->each(function (array $course) use ($addNode): void {
+            $addNode([
+                'id' => 'course:'.Str::slug($course['course']), 'type' => 'course', 'label' => $course['label'],
+                'eyebrow' => 'Course demand', 'summary' => $course['views'].' page views · '.$course['inquiries'].' inquiries',
+                'metrics' => [['label' => 'Demand signal', 'value' => (string) $course['signal']], ['label' => 'Views', 'value' => (string) $course['views']], ['label' => 'Inquiries', 'value' => (string) $course['inquiries']]],
+                'journey' => ['Page interest', 'Demand signal'], 'signal' => max(20, min(100, $course['signal'])),
+            ]);
+        });
+
+        if ($analyticsReady) {
+            WebsitePageView::query()->where('visited_at', '>=', now('UTC')->subDay())->latest('visited_at')->limit(240)->get()
+                ->groupBy('visitor_hash')->sortByDesc(fn (Collection $views): int => $views->count())->take(8)->each(function (Collection $views, string $hash) use ($addNode, $addEdge): void {
+                    $ordered = $views->sortBy('visited_at')->values();
+                    $last = $ordered->last();
+                    $visitorId = 'visitor:'.substr($hash, 0, 12);
+                    $pages = $ordered->pluck('page_path')->unique()->take(6)->values()->all();
+                    $addNode([
+                        'id' => $visitorId, 'type' => 'visitor', 'label' => 'Visitor '.strtoupper(substr($hash, 0, 6)),
+                        'eyebrow' => 'Anonymous visitor', 'summary' => implode(' · ', array_filter([$last?->country_code, $last?->device_type, $last?->browser])) ?: 'Privacy-safe browsing signal',
+                        'metrics' => [['label' => 'Views', 'value' => (string) $views->count()], ['label' => 'Pages', 'value' => (string) count($pages)], ['label' => 'Last seen', 'value' => $this->utcTimestamp($last?->getRawOriginal('visited_at'))?->diffForHumans() ?? 'Unknown']],
+                        'journey' => $pages, 'signal' => max(25, min(100, $views->count() * 16)),
+                    ]);
+                    $ordered->where('page_type', 'course')->pluck('page_path')->unique()->take(3)->each(function (string $path) use ($visitorId, $addNode, $addEdge): void {
+                        $slug = trim(Str::after($path, '/courses/'), '/');
+                        if ($slug === '') {
+                            return;
+                        }
+                        $courseId = 'course:'.Str::slug($slug);
+                        $addNode(['id' => $courseId, 'type' => 'course', 'label' => Str::headline($slug), 'eyebrow' => 'Course page', 'summary' => 'Receiving anonymous visitor attention.', 'metrics' => [], 'journey' => ['Course page viewed'], 'signal' => 45]);
+                        $addEdge($visitorId, $courseId, 'viewed');
+                    });
+                    $campaign = $ordered->first(fn (WebsitePageView $view) => filled($view->utm_campaign) || filled($view->utm_source));
+                    if ($campaign) {
+                        $campaignName = $campaign->utm_campaign ?: $campaign->utm_source;
+                        $campaignId = 'campaign:'.Str::slug($campaignName);
+                        $addNode([
+                            'id' => $campaignId, 'type' => 'campaign', 'label' => Str::headline($campaignName),
+                            'eyebrow' => 'Campaign source', 'summary' => implode(' · ', array_filter([$campaign->utm_source, $campaign->utm_medium])) ?: 'Tracked campaign acquisition',
+                            'metrics' => [['label' => 'Connected visitor', 'value' => strtoupper(substr($hash, 0, 6))]],
+                            'journey' => ['Campaign click', 'Website session'], 'signal' => 60,
+                        ]);
+                        $addEdge($campaignId, $visitorId, 'acquired');
+                    }
+                });
+        }
+
+        $visibleNodes = collect(['campaign' => 5, 'visitor' => 8, 'course' => 8, 'inquiry' => 8, 'staff' => 6])
+            ->flatMap(fn (int $limit, string $type): Collection => $nodes->where('type', $type)->take($limit))
+            ->values();
+        $visibleIds = $visibleNodes->pluck('id')->flip();
+
+        return [
+            'nodes' => $visibleNodes->all(),
+            'edges' => $edges->filter(fn (array $edge): bool => $visibleIds->has($edge['from']) && $visibleIds->has($edge['to']))
+                ->unique(fn (array $edge): string => $edge['from'].'>'.$edge['to'])->values()->all(),
+        ];
     }
 
     private function briefing(array $traffic, Collection $leads, Collection $active, Collection $alerts): string

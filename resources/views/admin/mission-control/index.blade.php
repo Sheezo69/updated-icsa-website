@@ -59,6 +59,44 @@
         @endforeach
     </section>
 
+    <section class="mission-neural" data-operations-graph>
+        <header class="mission-neural-head">
+            <div><span>LIVE OPERATIONS GRAPH</span><h2>Neural signal map</h2><p>See how campaigns become visits, course interest, inquiries and staff work. Select any signal to inspect its complete path.</p></div>
+            <div class="mission-neural-status"><i></i><strong>{{ count($operationsMap['nodes']) }}</strong><span>signals linked</span></div>
+        </header>
+        <div class="mission-neural-toolbar">
+            <div class="mission-map-filters" role="group" aria-label="Filter map signals">
+                @foreach ([['all', 'All signals'], ['campaign', 'Campaigns'], ['visitor', 'Visitors'], ['course', 'Courses'], ['inquiry', 'Inquiries'], ['staff', 'Staff']] as [$type, $label])
+                    <button type="button" class="{{ $type === 'all' ? 'is-active' : '' }}" data-map-filter="{{ $type }}"><i></i>{{ $label }}</button>
+                @endforeach
+            </div>
+            <div class="mission-map-controls">
+                <button type="button" data-map-zoom="out" aria-label="Zoom out"><i class="fas fa-minus"></i></button>
+                <button type="button" data-map-reset aria-label="Reset map"><i class="fas fa-expand"></i></button>
+                <button type="button" data-map-zoom="in" aria-label="Zoom in"><i class="fas fa-plus"></i></button>
+            </div>
+        </div>
+        <div class="mission-neural-shell">
+            <div class="mission-map-stage" data-map-stage>
+                <div class="mission-map-grid" aria-hidden="true"></div>
+                <div class="mission-map-scan" aria-hidden="true"></div>
+                <svg data-map-svg viewBox="0 0 1200 650" role="img" aria-label="Interactive operations relationship map">
+                    <defs>
+                        <filter id="mission-node-glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                        <filter id="mission-line-glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                    </defs>
+                    <g data-map-viewport><g data-map-edges></g><g data-map-nodes></g></g>
+                </svg>
+                <div class="mission-map-empty" data-map-empty hidden><i class="fas fa-satellite-dish"></i><strong>No matching signals</strong><span>Choose another layer to continue exploring.</span></div>
+                <div class="mission-map-legend"><span class="is-campaign">Campaign</span><span class="is-visitor">Visitor</span><span class="is-course">Course</span><span class="is-inquiry">Inquiry</span><span class="is-staff">Staff</span></div>
+                <small class="mission-map-hint"><i class="fas fa-computer-mouse"></i> Drag to move · Scroll to zoom · Select a node to inspect</small>
+            </div>
+            <aside class="mission-node-console" data-node-console aria-live="polite">
+                <div class="mission-node-console-idle"><span><i class="fas fa-share-nodes"></i></span><small>SIGNAL INSPECTOR</small><h3>Select a node</h3><p>Choose any glowing signal to reveal its metrics, journey and available action.</p></div>
+            </aside>
+        </div>
+    </section>
+
     <section class="mission-primary-grid">
         <article class="mission-panel mission-globe-panel">
             <header><div><span>GLOBAL PULSE</span><h2>Anonymous traffic orbit</h2><p>General country signals from the last 24 hours. No raw IP data.</p></div><i class="fas fa-earth-asia"></i></header>
@@ -174,12 +212,120 @@
 
     const icons = { visit:'location-arrow', inquiry:'envelope-open-text', admin:'user-shield' };
     const escape = value => { const node = document.createElement('div'); node.textContent = value ?? ''; return node.innerHTML; };
+
+    const graphRoot = document.querySelector('[data-operations-graph]');
+    const graphData = {{ Illuminate\Support\Js::from($operationsMap) }};
+    let renderOperationsGraph = () => {};
+    if (graphRoot) {
+        const svg = graphRoot.querySelector('[data-map-svg]');
+        const viewport = graphRoot.querySelector('[data-map-viewport]');
+        const edgeLayer = graphRoot.querySelector('[data-map-edges]');
+        const nodeLayer = graphRoot.querySelector('[data-map-nodes]');
+        const consoleNode = graphRoot.querySelector('[data-node-console]');
+        const emptyNode = graphRoot.querySelector('[data-map-empty]');
+        const ns = 'http://www.w3.org/2000/svg';
+        const palette = { campaign:'#a78bfa', visitor:'#22d3ee', course:'#3b82f6', inquiry:'#fb923c', staff:'#34d399' };
+        const glyphs = { campaign:'C', visitor:'V', course:'O', inquiry:'I', staff:'S' };
+        const order = ['campaign', 'visitor', 'course', 'inquiry', 'staff'];
+        const positions = new Map();
+        const nodeElements = new Map();
+        const edgeElements = [];
+        let filter = 'all';
+        let transform = { x:0, y:0, scale:1 };
+        let drag = null;
+        let selectedNodeId = null;
+
+        const visibleNodes = () => graphData.nodes.filter(node => filter === 'all' || node.type === filter || graphData.edges.some(edge => (edge.from === node.id || edge.to === node.id) && graphData.nodes.find(item => item.id === (edge.from === node.id ? edge.to : edge.from))?.type === filter));
+        const applyTransform = () => viewport.setAttribute('transform', `translate(${transform.x} ${transform.y}) scale(${transform.scale})`);
+        const resetMap = () => { transform = { x:0, y:0, scale:1 }; applyTransform(); };
+
+        const layout = () => {
+            positions.clear();
+            const active = visibleNodes();
+            const types = order.filter(type => active.some(node => node.type === type));
+            types.forEach((type, column) => {
+                const list = active.filter(node => node.type === type);
+                const x = types.length === 1 ? 600 : 100 + (1000 / (types.length - 1)) * column;
+                list.forEach((node, index) => positions.set(node.id, { x, y:90 + (470 / Math.max(1, list.length - 1)) * index }));
+            });
+            types.forEach(type => { const list = active.filter(node => node.type === type); if (list.length === 1) positions.get(list[0].id).y = 325; });
+            return active;
+        };
+
+        const inspect = node => {
+            selectedNodeId = node.id;
+            const color = palette[node.type];
+            const metrics = (node.metrics || []).map(item => `<div><small>${escape(item.label)}</small><strong>${escape(item.value)}</strong></div>`).join('');
+            const journey = (node.journey || []).map((step, index) => `<li><i>${index + 1}</i><span>${escape(step)}</span></li>`).join('');
+            consoleNode.innerHTML = `<div class="mission-console-top" style="--node-color:${color}"><span>${glyphs[node.type]}</span><div><small>${escape(node.eyebrow)}</small><h3>${escape(node.label)}</h3></div><i></i></div><p>${escape(node.summary)}</p>${metrics ? `<div class="mission-console-metrics">${metrics}</div>` : ''}<div class="mission-console-journey"><small>CONNECTED JOURNEY</small><ol>${journey || '<li><span>No journey events yet.</span></li>'}</ol></div>${node.action ? `<a href="${escape(node.action.url)}">${escape(node.action.label)} <i class="fas fa-arrow-up-right-from-square"></i></a>` : '<span class="mission-console-passive"><i class="fas fa-shield-halved"></i> Observation signal · no direct action</span>'}`;
+            nodeElements.forEach((element, id) => element.classList.toggle('is-selected', id === node.id));
+            const neighbours = new Set([node.id]);
+            graphData.edges.forEach(edge => { if (edge.from === node.id) neighbours.add(edge.to); if (edge.to === node.id) neighbours.add(edge.from); });
+            nodeElements.forEach((element, id) => element.classList.toggle('is-dimmed', !neighbours.has(id)));
+            edgeElements.forEach(({ element, edge }) => element.classList.toggle('is-dimmed', edge.from !== node.id && edge.to !== node.id));
+        };
+
+        const renderGraph = () => {
+            edgeLayer.replaceChildren(); nodeLayer.replaceChildren(); nodeElements.clear(); edgeElements.length = 0;
+            const active = layout();
+            const activeIds = new Set(active.map(node => node.id));
+            emptyNode.hidden = active.length > 0;
+            if (!active.length) {
+                selectedNodeId = null;
+                consoleNode.innerHTML = '<div class="mission-node-console-idle"><span><i class="fas fa-satellite-dish"></i></span><small>SIGNAL INSPECTOR</small><h3>Layer awaiting data</h3><p>This signal type will appear automatically when matching live activity is recorded.</p></div>';
+            }
+            graphData.edges.filter(edge => activeIds.has(edge.from) && activeIds.has(edge.to)).forEach((edge, index) => {
+                const from = positions.get(edge.from), to = positions.get(edge.to);
+                if (!from || !to) return;
+                const path = document.createElementNS(ns, 'path');
+                const bend = Math.max(55, Math.abs(to.x - from.x) * .42);
+                path.setAttribute('d', `M${from.x},${from.y} C${from.x + bend},${from.y} ${to.x - bend},${to.y} ${to.x},${to.y}`);
+                path.setAttribute('class', 'mission-map-edge'); path.setAttribute('data-edge', index);
+                edgeLayer.appendChild(path); edgeElements.push({ element:path, edge });
+                const pulse = document.createElementNS(ns, 'circle');
+                pulse.setAttribute('r', '2.6'); pulse.setAttribute('class', 'mission-map-particle');
+                const motion = document.createElementNS(ns, 'animateMotion');
+                motion.setAttribute('dur', `${2.5 + (index % 5) * .55}s`); motion.setAttribute('repeatCount', 'indefinite'); motion.setAttribute('path', path.getAttribute('d'));
+                pulse.appendChild(motion); edgeLayer.appendChild(pulse);
+            });
+            active.forEach(node => {
+                const point = positions.get(node.id), group = document.createElementNS(ns, 'g');
+                group.setAttribute('class', `mission-map-node is-${node.type}`); group.setAttribute('transform', `translate(${point.x} ${point.y})`); group.setAttribute('tabindex', '0'); group.setAttribute('role', 'button'); group.setAttribute('aria-label', `${node.eyebrow}: ${node.label}`);
+                const halo = document.createElementNS(ns, 'circle'); halo.setAttribute('class', 'mission-map-node-halo'); halo.setAttribute('r', `${31 + Math.min(12, Number(node.signal || 0) / 10)}`);
+                const orbit = document.createElementNS(ns, 'circle'); orbit.setAttribute('class', 'mission-map-node-orbit'); orbit.setAttribute('r', '28');
+                const core = document.createElementNS(ns, 'circle'); core.setAttribute('class', 'mission-map-node-core'); core.setAttribute('r', '19');
+                const glyph = document.createElementNS(ns, 'text'); glyph.setAttribute('class', 'mission-map-node-glyph'); glyph.setAttribute('text-anchor', 'middle'); glyph.setAttribute('dy', '.35em'); glyph.textContent = glyphs[node.type];
+                const label = document.createElementNS(ns, 'text'); label.setAttribute('class', 'mission-map-node-label'); label.setAttribute('text-anchor', 'middle'); label.setAttribute('y', '50'); label.textContent = node.label.length > 20 ? `${node.label.slice(0, 19)}…` : node.label;
+                const type = document.createElementNS(ns, 'text'); type.setAttribute('class', 'mission-map-node-type'); type.setAttribute('text-anchor', 'middle'); type.setAttribute('y', '64'); type.textContent = node.type.toUpperCase();
+                group.append(halo, orbit, core, glyph, label, type); group.addEventListener('click', event => { event.stopPropagation(); inspect(node); }); group.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); inspect(node); } });
+                nodeLayer.appendChild(group); nodeElements.set(node.id, group);
+            });
+            const priority = active.find(node => node.id === selectedNodeId) || active.find(node => node.type === 'inquiry') || active[0]; if (priority) inspect(priority);
+        };
+
+        graphRoot.querySelectorAll('[data-map-filter]').forEach(button => button.addEventListener('click', () => { filter = button.dataset.mapFilter; graphRoot.querySelectorAll('[data-map-filter]').forEach(item => item.classList.toggle('is-active', item === button)); resetMap(); renderGraph(); }));
+        graphRoot.querySelectorAll('[data-map-zoom]').forEach(button => button.addEventListener('click', () => { transform.scale = Math.max(.65, Math.min(2.2, transform.scale + (button.dataset.mapZoom === 'in' ? .18 : -.18))); applyTransform(); }));
+        graphRoot.querySelector('[data-map-reset]').addEventListener('click', resetMap);
+        svg.addEventListener('wheel', event => { event.preventDefault(); transform.scale = Math.max(.65, Math.min(2.2, transform.scale + (event.deltaY < 0 ? .1 : -.1))); applyTransform(); }, { passive:false });
+        svg.addEventListener('pointerdown', event => { if (event.target.closest('.mission-map-node')) return; drag = { x:event.clientX, y:event.clientY, tx:transform.x, ty:transform.y }; svg.setPointerCapture(event.pointerId); });
+        svg.addEventListener('pointermove', event => { if (!drag) return; transform.x = drag.tx + (event.clientX - drag.x) / transform.scale; transform.y = drag.ty + (event.clientY - drag.y) / transform.scale; applyTransform(); });
+        svg.addEventListener('pointerup', () => drag = null); svg.addEventListener('pointercancel', () => drag = null);
+        renderOperationsGraph = renderGraph;
+        renderGraph();
+    }
     const refresh = async () => {
         if (document.hidden) return;
         try {
             const response = await fetch(root.dataset.snapshotUrl, { headers:{ Accept:'application/json' }, credentials:'same-origin' });
             if (!response.ok) return;
             const data = await response.json();
+            if (data.operations_map) {
+                graphData.nodes = data.operations_map.nodes || [];
+                graphData.edges = data.operations_map.edges || [];
+                const signalCount = graphRoot?.querySelector('.mission-neural-status strong');
+                if (signalCount) signalCount.textContent = graphData.nodes.length.toLocaleString();
+                renderOperationsGraph();
+            }
             Object.entries(data.stats).forEach(([key,value]) => { const node = document.querySelector(`[data-mission-stat="${key}"]`); if (node && key !== 'traffic_delta') node.textContent = Number(value).toLocaleString(); });
             const feed = document.querySelector('[data-mission-feed]');
             if (feed && data.feed.length) feed.innerHTML = data.feed.map(event => `<div class="is-${event.type}"><span><i class="fas fa-${icons[event.type] || 'circle'}"></i></span><div><strong>${escape(event.title)}</strong><small>${escape(event.meta)}</small></div><time>${escape(event.ago)}</time></div>`).join('');

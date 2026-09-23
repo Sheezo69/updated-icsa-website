@@ -64,6 +64,8 @@ class MissionControlTest extends TestCase
             ->assertOk()
             ->assertSee('ICSA')
             ->assertSee('Mission Control')
+            ->assertSee('Neural signal map')
+            ->assertSee('Campaigns')
             ->assertSee('High Intent Visitor')
             ->assertSee('Hot leads')
             ->assertSee('excel-intake')
@@ -74,6 +76,9 @@ class MissionControlTest extends TestCase
             ->assertOk()
             ->assertJsonPath('stats.live_visitors', 1)
             ->assertJsonPath('stats.hot_leads', 1);
+        $this->withSession(['admin_id' => $owner->id])
+            ->get(route('admin.mission-control.snapshot'))
+            ->assertJsonStructure(['operations_map' => ['nodes', 'edges']]);
 
         $this->withSession(['admin_id' => $staff->id])
             ->get(route('admin.mission-control.index'))

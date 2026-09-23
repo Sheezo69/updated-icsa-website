@@ -44,6 +44,7 @@ class MissionControlController extends Controller
                 'last_seen' => $journey['last_seen']?->toIso8601String(),
                 'ago' => $journey['last_seen']?->diffForHumans(),
             ])->values(),
+            'operations_map' => $data['operationsMap'],
             'generated_at' => now()->toIso8601String(),
         ]);
     }
