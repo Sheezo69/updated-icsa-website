@@ -62,7 +62,7 @@
     <section class="mission-neural" data-operations-graph>
         <header class="mission-neural-head">
             <div><span>LIVE OPERATIONS GRAPH</span><h2>Neural signal map</h2><p>See how campaigns become visits, course interest, inquiries and staff work. Select any signal to inspect its complete path.</p></div>
-            <div class="mission-neural-status"><i></i><strong>{{ count($operationsMap['nodes']) }}</strong><span>signals linked</span></div>
+            <div class="mission-neural-status {{ ($operationsMap['mode'] ?? 'live') === 'preview' ? 'is-preview' : '' }}"><i></i><strong>{{ count($operationsMap['nodes']) }}</strong><span>{{ ($operationsMap['mode'] ?? 'live') === 'preview' ? 'preview signals' : 'signals linked' }}</span></div>
         </header>
         <div class="mission-neural-toolbar">
             <div class="mission-map-filters" role="group" aria-label="Filter map signals">
@@ -80,6 +80,7 @@
             <div class="mission-map-stage" data-map-stage>
                 <div class="mission-map-grid" aria-hidden="true"></div>
                 <div class="mission-map-scan" aria-hidden="true"></div>
+                <div class="mission-map-mode {{ ($operationsMap['mode'] ?? 'live') === 'preview' ? 'is-preview' : '' }}" data-map-mode><i></i><span>{{ ($operationsMap['mode'] ?? 'live') === 'preview' ? 'Preview topology · waiting for live connections' : 'Live relationship topology' }}</span></div>
                 <svg data-map-svg viewBox="0 0 1200 650" role="img" aria-label="Interactive operations relationship map">
                     <defs>
                         <filter id="mission-node-glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
@@ -214,7 +215,7 @@
 
     const graphRoot = document.querySelector('[data-operations-graph]');
     const graphData = {{ Illuminate\Support\Js::from($operationsMap) }};
-    const fingerprint = data => JSON.stringify([(data.nodes || []).map(node => [node.id, node.signal, node.summary]), data.edges || []]);
+    const fingerprint = data => JSON.stringify([data.mode || 'live', (data.nodes || []).map(node => [node.id, node.signal, node.summary]), data.edges || []]);
     let graphFingerprint = fingerprint(graphData);
     let renderOperationsGraph = () => {};
     if (graphRoot) {
@@ -341,9 +342,19 @@
                 if (nextFingerprint !== graphFingerprint) {
                     graphData.nodes = data.operations_map.nodes || [];
                     graphData.edges = data.operations_map.edges || [];
+                    graphData.mode = data.operations_map.mode || 'live';
                     graphFingerprint = nextFingerprint;
                     const signalCount = graphRoot?.querySelector('.mission-neural-status strong');
                     if (signalCount) signalCount.textContent = graphData.nodes.length.toLocaleString();
+                    const status = graphRoot?.querySelector('.mission-neural-status');
+                    const statusLabel = status?.querySelector('span');
+                    const modeLabel = graphRoot?.querySelector('[data-map-mode]');
+                    const isPreview = data.operations_map.mode === 'preview';
+                    status?.classList.toggle('is-preview', isPreview);
+                    if (statusLabel) statusLabel.textContent = isPreview ? 'preview signals' : 'signals linked';
+                    modeLabel?.classList.toggle('is-preview', isPreview);
+                    const modeText = modeLabel?.querySelector('span');
+                    if (modeText) modeText.textContent = isPreview ? 'Preview topology · waiting for live connections' : 'Live relationship topology';
                     renderOperationsGraph();
                 }
             }

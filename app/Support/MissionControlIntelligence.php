@@ -394,13 +394,44 @@ class MissionControlIntelligence
         $visibleIds = $visibleEdges->flatMap(fn (array $edge): array => [$edge['from'], $edge['to']])->unique()->flip();
         $visibleNodes = $nodes->filter(fn (array $node): bool => $visibleIds->has($node['id']))->values();
 
-        if ($visibleNodes->isEmpty()) {
-            $visibleNodes = $nodes->take(12)->values();
+        if ($visibleEdges->isEmpty() || $visibleNodes->count() < 2) {
+            return $this->previewOperationsMap();
         }
 
         return [
             'nodes' => $visibleNodes->all(),
             'edges' => $visibleEdges->all(),
+            'mode' => 'live',
+        ];
+    }
+
+    private function previewOperationsMap(): array
+    {
+        $waiting = [['label' => 'State', 'value' => 'Awaiting live data']];
+        $nodes = [
+            ['id' => 'preview:campaign', 'type' => 'campaign', 'label' => 'Campaign Feed', 'eyebrow' => 'Preview campaign', 'summary' => 'Marketing sources will enter the live network here.', 'metrics' => $waiting, 'journey' => ['Campaign click', 'Website arrival'], 'signal' => 58],
+            ['id' => 'preview:visitor-a', 'type' => 'visitor', 'label' => 'Visitor Stream A', 'eyebrow' => 'Preview visitor', 'summary' => 'Anonymous visitor sessions will appear without raw IP data.', 'metrics' => $waiting, 'journey' => ['Anonymous arrival', 'Course exploration'], 'signal' => 72],
+            ['id' => 'preview:visitor-b', 'type' => 'visitor', 'label' => 'Visitor Stream B', 'eyebrow' => 'Preview visitor', 'summary' => 'Direct and referral journeys form their own connected paths.', 'metrics' => $waiting, 'journey' => ['Direct arrival', 'General enquiry'], 'signal' => 46],
+            ['id' => 'preview:course-a', 'type' => 'course', 'label' => 'Course Interest', 'eyebrow' => 'Preview course', 'summary' => 'Viewed courses connect visitor intent to resulting inquiries.', 'metrics' => $waiting, 'journey' => ['Course page viewed', 'Interest detected'], 'signal' => 68],
+            ['id' => 'preview:course-b', 'type' => 'course', 'label' => 'General Enquiries', 'eyebrow' => 'Preview course', 'summary' => 'General website interest can also enter the inquiry queue.', 'metrics' => $waiting, 'journey' => ['Contact page viewed', 'Question prepared'], 'signal' => 42],
+            ['id' => 'preview:inquiry', 'type' => 'inquiry', 'label' => 'Inquiry Queue', 'eyebrow' => 'Preview inquiry', 'summary' => 'New submissions converge here before assignment and follow-up.', 'metrics' => $waiting, 'journey' => ['Form submitted', 'Awaiting assignment'], 'signal' => 84],
+            ['id' => 'preview:reception', 'type' => 'staff', 'label' => 'Reception Desk', 'eyebrow' => 'Preview staff', 'summary' => 'Reception handles visitor follow-up and course guidance.', 'metrics' => $waiting, 'journey' => ['Inquiry assigned', 'WhatsApp follow-up'], 'signal' => 64],
+            ['id' => 'preview:admin', 'type' => 'staff', 'label' => 'Admin Team', 'eyebrow' => 'Preview staff', 'summary' => 'Administration monitors ownership and response progress.', 'metrics' => $waiting, 'journey' => ['Queue monitored', 'Resolution tracked'], 'signal' => 52],
+        ];
+
+        return [
+            'nodes' => $nodes,
+            'edges' => [
+                ['from' => 'preview:campaign', 'to' => 'preview:visitor-a', 'label' => 'acquired'],
+                ['from' => 'preview:visitor-a', 'to' => 'preview:course-a', 'label' => 'explored'],
+                ['from' => 'preview:visitor-b', 'to' => 'preview:course-b', 'label' => 'explored'],
+                ['from' => 'preview:visitor-a', 'to' => 'preview:inquiry', 'label' => 'submitted'],
+                ['from' => 'preview:course-a', 'to' => 'preview:inquiry', 'label' => 'converted'],
+                ['from' => 'preview:course-b', 'to' => 'preview:inquiry', 'label' => 'converted'],
+                ['from' => 'preview:inquiry', 'to' => 'preview:reception', 'label' => 'assigned'],
+                ['from' => 'preview:inquiry', 'to' => 'preview:admin', 'label' => 'monitored'],
+            ],
+            'mode' => 'preview',
         ];
     }
 

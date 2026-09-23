@@ -167,4 +167,16 @@ class MissionControlTest extends TestCase
             ->assertSee('Traffic intelligence is awaiting analytics storage')
             ->assertSee('High Intent Visitor');
     }
+
+    public function test_empty_installation_shows_an_honest_connected_preview_topology(): void
+    {
+        $owner = $this->account('owner', Admin::ROLE_ADMIN);
+        $response = $this->withSession(['admin_id' => $owner->id])->get(route('admin.mission-control.index'));
+        $response->assertOk()->assertSee('Preview topology')->assertSee('Reception Desk');
+
+        $snapshot = $this->withSession(['admin_id' => $owner->id])->get(route('admin.mission-control.snapshot'));
+        $snapshot->assertOk()->assertJsonPath('operations_map.mode', 'preview');
+        $this->assertCount(8, $snapshot->json('operations_map.nodes'));
+        $this->assertCount(8, $snapshot->json('operations_map.edges'));
+    }
 }
