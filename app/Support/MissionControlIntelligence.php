@@ -385,7 +385,7 @@ class MissionControlIntelligence
                 });
         }
 
-        $visibleNodes = collect(['campaign' => 5, 'visitor' => 8, 'course' => 8, 'inquiry' => 8, 'staff' => 6])
+        $visibleNodes = collect(['campaign' => 4, 'visitor' => 6, 'course' => 6, 'inquiry' => 6, 'staff' => 5])
             ->flatMap(fn (int $limit, string $type): Collection => $nodes->where('type', $type)->take($limit))
             ->values();
         $visibleIds = $visibleNodes->pluck('id')->flip();

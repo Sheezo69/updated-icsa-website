@@ -83,7 +83,6 @@
                 <svg data-map-svg viewBox="0 0 1200 650" role="img" aria-label="Interactive operations relationship map">
                     <defs>
                         <filter id="mission-node-glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-                        <filter id="mission-line-glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
                     </defs>
                     <g data-map-viewport><g data-map-edges></g><g data-map-nodes></g></g>
                 </svg>
@@ -215,6 +214,8 @@
 
     const graphRoot = document.querySelector('[data-operations-graph]');
     const graphData = {{ Illuminate\Support\Js::from($operationsMap) }};
+    const fingerprint = data => JSON.stringify([(data.nodes || []).map(node => [node.id, node.signal, node.summary]), data.edges || []]);
+    let graphFingerprint = fingerprint(graphData);
     let renderOperationsGraph = () => {};
     if (graphRoot) {
         const svg = graphRoot.querySelector('[data-map-svg]');
@@ -234,9 +235,12 @@
         let transform = { x:0, y:0, scale:1 };
         let drag = null;
         let selectedNodeId = null;
-
+        let transformFrame = 0;
         const visibleNodes = () => graphData.nodes.filter(node => filter === 'all' || node.type === filter || graphData.edges.some(edge => (edge.from === node.id || edge.to === node.id) && graphData.nodes.find(item => item.id === (edge.from === node.id ? edge.to : edge.from))?.type === filter));
-        const applyTransform = () => viewport.setAttribute('transform', `translate(${transform.x} ${transform.y}) scale(${transform.scale})`);
+        const applyTransform = () => {
+            if (transformFrame) return;
+            transformFrame = window.requestAnimationFrame(() => { viewport.setAttribute('transform', `translate(${transform.x} ${transform.y}) scale(${transform.scale})`); transformFrame = 0; });
+        };
         const resetMap = () => { transform = { x:0, y:0, scale:1 }; applyTransform(); };
 
         const layout = () => {
@@ -262,7 +266,11 @@
             const neighbours = new Set([node.id]);
             graphData.edges.forEach(edge => { if (edge.from === node.id) neighbours.add(edge.to); if (edge.to === node.id) neighbours.add(edge.from); });
             nodeElements.forEach((element, id) => element.classList.toggle('is-dimmed', !neighbours.has(id)));
-            edgeElements.forEach(({ element, edge }) => element.classList.toggle('is-dimmed', edge.from !== node.id && edge.to !== node.id));
+            edgeElements.forEach(({ element, pulse, edge }) => {
+                const active = edge.from === node.id || edge.to === node.id;
+                element.classList.toggle('is-active', active); element.classList.toggle('is-dimmed', !active);
+                if (pulse) { pulse.classList.toggle('is-active', active); pulse.classList.toggle('is-dimmed', !active); }
+            });
         };
 
         const renderGraph = () => {
@@ -282,11 +290,15 @@
                 path.setAttribute('d', `M${from.x},${from.y} C${from.x + bend},${from.y} ${to.x - bend},${to.y} ${to.x},${to.y}`);
                 path.setAttribute('class', 'mission-map-edge'); path.setAttribute('data-edge', index);
                 edgeLayer.appendChild(path); edgeElements.push({ element:path, edge });
-                const pulse = document.createElementNS(ns, 'circle');
-                pulse.setAttribute('r', '2.6'); pulse.setAttribute('class', 'mission-map-particle');
-                const motion = document.createElementNS(ns, 'animateMotion');
-                motion.setAttribute('dur', `${2.5 + (index % 5) * .55}s`); motion.setAttribute('repeatCount', 'indefinite'); motion.setAttribute('path', path.getAttribute('d'));
-                pulse.appendChild(motion); edgeLayer.appendChild(pulse);
+                let pulse = null;
+                if (index < 10) {
+                    pulse = document.createElementNS(ns, 'circle');
+                    pulse.setAttribute('r', '2.4'); pulse.setAttribute('class', 'mission-map-particle');
+                    const motion = document.createElementNS(ns, 'animateMotion');
+                    motion.setAttribute('dur', `${3.2 + (index % 4) * .7}s`); motion.setAttribute('repeatCount', 'indefinite'); motion.setAttribute('path', path.getAttribute('d'));
+                    pulse.appendChild(motion); edgeLayer.appendChild(pulse);
+                }
+                edgeElements[edgeElements.length - 1].pulse = pulse;
             });
             active.forEach(node => {
                 const point = positions.get(node.id), group = document.createElementNS(ns, 'g');
@@ -313,26 +325,36 @@
         renderOperationsGraph = renderGraph;
         renderGraph();
     }
+    let refreshing = false;
     const refresh = async () => {
-        if (document.hidden) return;
+        if (document.hidden || refreshing) return;
+        refreshing = true;
         try {
             const response = await fetch(root.dataset.snapshotUrl, { headers:{ Accept:'application/json' }, credentials:'same-origin' });
             if (!response.ok) return;
             const data = await response.json();
             if (data.operations_map) {
-                graphData.nodes = data.operations_map.nodes || [];
-                graphData.edges = data.operations_map.edges || [];
-                const signalCount = graphRoot?.querySelector('.mission-neural-status strong');
-                if (signalCount) signalCount.textContent = graphData.nodes.length.toLocaleString();
-                renderOperationsGraph();
+                const nextFingerprint = fingerprint(data.operations_map);
+                if (nextFingerprint !== graphFingerprint) {
+                    graphData.nodes = data.operations_map.nodes || [];
+                    graphData.edges = data.operations_map.edges || [];
+                    graphFingerprint = nextFingerprint;
+                    const signalCount = graphRoot?.querySelector('.mission-neural-status strong');
+                    if (signalCount) signalCount.textContent = graphData.nodes.length.toLocaleString();
+                    renderOperationsGraph();
+                }
             }
             Object.entries(data.stats).forEach(([key,value]) => { const node = document.querySelector(`[data-mission-stat="${key}"]`); if (node && key !== 'traffic_delta') node.textContent = Number(value).toLocaleString(); });
             const feed = document.querySelector('[data-mission-feed]');
             if (feed && data.feed.length) feed.innerHTML = data.feed.map(event => `<div class="is-${event.type}"><span><i class="fas fa-${icons[event.type] || 'circle'}"></i></span><div><strong>${escape(event.title)}</strong><small>${escape(event.meta)}</small></div><time>${escape(event.ago)}</time></div>`).join('');
             document.querySelector('[data-mission-updated]').textContent = 'Live snapshot · updated just now';
-        } catch (_) {}
+        } catch (_) {
+        } finally {
+            refreshing = false;
+        }
     };
-    window.setInterval(refresh, 10000);
+    document.addEventListener('visibilitychange', () => { graphRoot?.classList.toggle('is-paused', document.hidden); if (!document.hidden) refresh(); });
+    window.setInterval(refresh, 15000);
 })();
 </script>
 @endpush
