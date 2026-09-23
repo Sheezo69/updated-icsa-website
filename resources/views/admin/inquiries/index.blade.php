@@ -283,6 +283,12 @@
                     <section class="inquiry-detail-section">
                         <h3 class="inquiry-detail-section-title">Inquiry Actions</h3>
                         <div class="inquiry-detail-actions">
+                            <form class="inquiry-forward-reception" method="POST" action="{{ route('admin.inquiries.forward-whatsapp', $inquiry) }}" target="_blank" onsubmit="return confirm('Open WhatsApp and prepare inquiry #{{ $inquiry->id }} for {{ config('admin.receptionist.name', 'Miss Lindy') }}?');">
+                                @csrf
+                                <span class="inquiry-forward-reception-icon"><i class="fab fa-whatsapp" aria-hidden="true"></i></span>
+                                <span class="inquiry-forward-reception-copy"><small>RECEPTION DESK</small><strong>Forward to {{ config('admin.receptionist.name', 'Miss Lindy') }}</strong><em>{{ config('admin.receptionist.email', 'lyn.icsa@gmail.com') }}</em></span>
+                                <button type="submit">Prepare message <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i></button>
+                            </form>
                             <a class="admin-btn admin-btn-primary" href="mailto:{{ $inquiry->email }}?subject={{ rawurlencode('Your ICSA inquiry #'.$inquiry->id) }}"><i class="far fa-paper-plane" aria-hidden="true"></i> Send Email</a>
                             @if ($phoneDigits)
                                 <a class="admin-btn admin-btn-secondary" href="https://wa.me/{{ $phoneDigits }}?text={{ $whatsappText }}" target="_blank" rel="noopener noreferrer"><i class="fab fa-whatsapp" aria-hidden="true"></i> Message</a>

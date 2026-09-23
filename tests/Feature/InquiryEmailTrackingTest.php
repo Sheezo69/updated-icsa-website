@@ -4,8 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Admin;
 use App\Models\ContactMessage;
-use App\Support\InquiryMailer;
 use App\Support\CourseFileRepository;
+use App\Support\InquiryMailer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
@@ -19,6 +19,7 @@ class InquiryEmailTrackingTest extends TestCase
     {
         parent::setUp();
         config(['mail.default' => 'array', 'mail.admin_notification_email' => 'admin@example.com']);
+        config(['admin.receptionist' => ['name' => 'Miss Lindy', 'email' => 'lyn.icsa@gmail.com', 'whatsapp' => '96597674076']]);
     }
 
     private function inquiry(): ContactMessage
@@ -94,9 +95,9 @@ class InquiryEmailTrackingTest extends TestCase
         foreach (['5095331', '509533144', '+96650953314', '83886756'] as $index => $phone) {
             $this->withServerVariables(['REMOTE_ADDR' => '192.0.2.'.($index + 1)])
                 ->postJson(route('api.contact'), [
-                'name' => 'Invalid Phone',
-                'email' => 'invalid@example.com',
-                'phone' => $phone,
+                    'name' => 'Invalid Phone',
+                    'email' => 'invalid@example.com',
+                    'phone' => $phone,
                 ])->assertUnprocessable()->assertJsonFragment([
                     'message' => 'Enter a valid 8-digit Kuwait mobile number.',
                 ]);
@@ -136,6 +137,29 @@ class InquiryEmailTrackingTest extends TestCase
         $this->post($url, ['kind' => 'invalid'])->assertSessionHasErrors('kind');
         $this->post($url, ['kind' => 'admin'])->assertSessionHas('success');
         $this->assertDatabaseCount('inquiry_email_attempts', 1);
+    }
+
+    public function test_inquiry_can_be_prepared_for_receptionist_whatsapp_with_an_audit_trail(): void
+    {
+        $inquiry = $this->inquiry();
+        $url = route('admin.inquiries.forward-whatsapp', $inquiry);
+        $this->post($url)->assertRedirect(route('admin.login'));
+
+        $admin = Admin::create(['username' => 'tester', 'password_hash' => bcrypt('test-password'), 'role' => 'admin']);
+        $response = $this->withSession(['admin_id' => $admin->id])->post($url);
+        $location = (string) $response->headers->get('Location');
+        $this->assertStringStartsWith('https://wa.me/96597674076?text=', $location);
+        parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
+        $message = $query['text'] ?? '';
+        $this->assertStringContainsString('New ICSA Inquiry #'.$inquiry->id, $message);
+        $this->assertStringContainsString('Test Visitor', $message);
+        $this->assertStringContainsString('50953314', $message);
+        $this->assertStringContainsString('Test inquiry', $message);
+        $this->assertStringContainsString(route('admin.inquiries.index', ['open' => $inquiry->id]), $message);
+        $this->assertDatabaseHas('admin_activity_logs', [
+            'action' => 'inquiry.whatsapp_prepared',
+            'subject_id' => (string) $inquiry->id,
+        ]);
     }
 
     public function test_inquiry_management_filters_assigns_and_exports_selected_rows(): void

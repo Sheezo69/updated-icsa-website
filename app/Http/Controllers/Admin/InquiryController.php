@@ -10,6 +10,7 @@ use App\Support\InquiryMailer;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -105,6 +106,48 @@ class InquiryController extends Controller
         $audit->record($request, 'inquiry.deleted', 'inquiries', 'Deleted an inquiry.', ContactMessage::class, $id, $label, $before);
 
         return back()->with('success', 'Inquiry deleted.');
+    }
+
+    public function forwardToReceptionist(Request $request, ContactMessage $inquiry, AdminActivityLogger $audit): RedirectResponse
+    {
+        $recipientName = trim((string) config('admin.receptionist.name', 'Miss Lindy'));
+        $recipientEmail = trim((string) config('admin.receptionist.email', ''));
+        $recipientNumber = preg_replace('/\D+/', '', (string) config('admin.receptionist.whatsapp', ''));
+        abort_unless(preg_match('/^\d{8,15}$/', $recipientNumber) === 1, 503, 'Receptionist WhatsApp is not configured.');
+
+        $messageBody = Str::limit(trim((string) preg_replace('/\s+/', ' ', $inquiry->message ?: 'No message provided.')), 800);
+        $lines = [
+            '*New ICSA Inquiry #'.$inquiry->id.'*',
+            'Forwarded for receptionist follow-up',
+            '',
+            '*Name:* '.$inquiry->name,
+            '*Phone:* '.($inquiry->phone ?: 'Not provided'),
+            '*Email:* '.$inquiry->email,
+            '*Course:* '.($inquiry->course_interest ?: 'General inquiry'),
+            '*Type:* '.($inquiry->form_type ?: $inquiry->subject ?: 'Website inquiry'),
+            '*Status:* '.Str::headline($inquiry->status),
+            '*Received:* '.($inquiry->created_at?->format('M d, Y · h:i A') ?? 'Unknown'),
+            '*Assigned to:* '.($inquiry->assignedTo?->username ?: 'Unassigned'),
+            '',
+            '*Visitor message:*',
+            $messageBody,
+            '',
+            '*Open in admin:* '.route('admin.inquiries.index', ['open' => $inquiry->id]),
+        ];
+
+        $audit->record(
+            $request,
+            'inquiry.whatsapp_prepared',
+            'inquiries',
+            'Prepared an inquiry for receptionist follow-up in WhatsApp.',
+            ContactMessage::class,
+            $inquiry->id,
+            '#'.$inquiry->id.' '.$inquiry->name,
+            null,
+            ['recipient_name' => $recipientName, 'recipient_email' => $recipientEmail, 'recipient_whatsapp' => '+'.$recipientNumber],
+        );
+
+        return redirect()->away('https://wa.me/'.$recipientNumber.'?text='.rawurlencode(implode("\n", $lines)));
     }
 
     public function resend(Request $request, ContactMessage $inquiry, InquiryMailer $mailer, AdminActivityLogger $audit): RedirectResponse

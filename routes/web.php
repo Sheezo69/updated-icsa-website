@@ -59,6 +59,8 @@ Route::prefix($adminPrefix)->group(function (): void {
         Route::get('/inquiries.php', fn () => redirect()->route('admin.inquiries.index'));
         Route::get('/inquiries/export', [InquiryController::class, 'export'])->name('admin.inquiries.export');
         Route::patch('/inquiries/{inquiry}', [InquiryController::class, 'update'])->name('admin.inquiries.update');
+        Route::post('/inquiries/{inquiry}/forward-whatsapp', [InquiryController::class, 'forwardToReceptionist'])
+            ->middleware('throttle:20,1')->name('admin.inquiries.forward-whatsapp');
         Route::post('/inquiries/{inquiry}/email/resend', [InquiryController::class, 'resend'])
             ->middleware('throttle:6,1')->name('admin.inquiries.email.resend');
         Route::delete('/inquiries/{inquiry}', [InquiryController::class, 'destroy'])->name('admin.inquiries.destroy');

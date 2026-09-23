@@ -2580,6 +2580,66 @@ a {
     color: #57dfa1;
 }
 
+.inquiry-detail-actions .inquiry-forward-reception {
+    position: relative;
+    display: grid;
+    min-height: 78px;
+    padding: 0.72rem;
+    grid-column: 1 / -1;
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.7rem;
+    overflow: hidden;
+    border: 1px solid rgba(63, 222, 158, 0.3);
+    border-radius: 13px;
+    background: radial-gradient(circle at 95% 0, rgba(46, 220, 153, 0.18), transparent 44%), linear-gradient(135deg, rgba(12, 49, 48, 0.92), rgba(8, 31, 43, 0.96));
+    box-shadow: inset 0 1px rgba(178, 255, 224, 0.04), 0 10px 24px rgba(0, 0, 0, 0.12);
+}
+
+.inquiry-forward-reception::after {
+    position: absolute;
+    right: -24px;
+    bottom: -34px;
+    width: 100px;
+    height: 100px;
+    content: "";
+    border-radius: 50%;
+    background: rgba(43, 218, 147, 0.13);
+    filter: blur(24px);
+    pointer-events: none;
+}
+
+.inquiry-forward-reception-icon {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    border: 1px solid rgba(76, 230, 169, 0.34);
+    border-radius: 12px;
+    color: #68efb6;
+    background: rgba(39, 191, 133, 0.15);
+    box-shadow: 0 0 20px rgba(41, 213, 148, 0.12);
+    font-size: 1.1rem;
+}
+
+.inquiry-forward-reception-copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.17rem;
+}
+
+.inquiry-forward-reception small { color: #4fd59e; font-size: 0.5rem; font-weight: 800; letter-spacing: 0.1em; }
+.inquiry-forward-reception strong { overflow: hidden; color: #e5fff4; font-size: 0.69rem; text-overflow: ellipsis; white-space: nowrap; }
+.inquiry-forward-reception em { overflow: hidden; color: #6f9e91; font-size: 0.55rem; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+.inquiry-forward-reception button { z-index: 1; min-height: 34px; padding: 0 0.65rem; border: 1px solid rgba(93, 237, 178, 0.28); border-radius: 9px; color: #dffff1; background: rgba(40, 188, 130, 0.2); font-family: inherit; font-size: 0.55rem; font-weight: 800; cursor: pointer; transition: 0.18s ease; }
+.inquiry-forward-reception button:hover { color: #05251a; background: #58e7ad; box-shadow: 0 7px 18px rgba(37, 211, 143, 0.22); transform: translateY(-1px); }
+
+@media (max-width: 480px) {
+    .inquiry-detail-actions .inquiry-forward-reception { grid-template-columns: 38px 1fr; }
+    .inquiry-forward-reception button { grid-column: 1 / -1; }
+}
+
 .inquiry-email-activity {
     padding-bottom: 0.25rem;
 }
