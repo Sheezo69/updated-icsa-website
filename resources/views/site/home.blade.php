@@ -179,6 +179,87 @@
         </div>
     </section>
 
+    <!-- Interactive Learning Network -->
+    <section class="public-neural section" id="learning-network" data-learning-network>
+        <div class="public-neural__aurora" aria-hidden="true"></div>
+        <div class="container public-neural__container">
+            <div class="public-neural__intro">
+                <div>
+                    <span class="public-neural__eyebrow"><i class="fas fa-circle-nodes"></i> Interactive course explorer</span>
+                    <h2>Find your path through the <span>ICSA learning network</span></h2>
+                    <p>See how every program connects to practical skills, recognized certification, and your next career move. Select any signal to explore its route.</p>
+                </div>
+                <div class="public-neural__privacy"><span></span> Public learning paths · no personal data</div>
+            </div>
+
+            <div class="public-neural__filters" role="group" aria-label="Filter learning network">
+                <button type="button" class="is-active" data-neural-filter="all" aria-pressed="true"><span></span> All paths</button>
+                <button type="button" data-neural-filter="program" aria-pressed="false"><span></span> Programs</button>
+                <button type="button" data-neural-filter="outcome" aria-pressed="false"><span></span> Outcomes</button>
+            </div>
+
+            <div class="public-neural__viewport" aria-label="Interactive map of ICSA learning paths">
+                <div class="public-neural__stage">
+                    <div class="public-neural__grid" aria-hidden="true"></div>
+                    <div class="public-neural__orbit public-neural__orbit--one" aria-hidden="true"></div>
+                    <div class="public-neural__orbit public-neural__orbit--two" aria-hidden="true"></div>
+                    <svg class="public-neural__links" aria-hidden="true"></svg>
+
+                    <button type="button" class="public-neural__node public-neural__node--entry" style="--node-x: 7%; --node-y: 50%;" data-node-id="explore" data-node-group="entry" data-node-title="Start exploring" data-node-kicker="Your journey" data-node-description="Begin with the skill, qualification, or career direction you want to build." data-node-action="Browse every course" data-node-url="#courses" aria-label="Explore all ICSA learning paths">
+                        <span class="public-neural__pulse"></span><span class="public-neural__core"><i class="fas fa-compass"></i></span><strong>Start Here</strong><small>EXPLORE</small>
+                    </button>
+
+                    <button type="button" class="public-neural__node public-neural__node--program" style="--node-x: 30%; --node-y: 10%;" data-node-id="it" data-node-group="program" data-node-title="IT &amp; Technical" data-node-kicker="{{ $categoryCounts['it'] }} learning options" data-node-description="Build practical ability across software, networking, programming, and modern technical tools." data-node-action="Explore IT courses" data-node-url="{{ route('site.home', ['category' => 'it']) }}#courses">
+                        <span class="public-neural__pulse"></span><span class="public-neural__core"><i class="fas fa-code"></i></span><strong>IT &amp; Technical</strong><small>{{ $categoryCounts['it'] }} COURSES</small>
+                    </button>
+                    <button type="button" class="public-neural__node public-neural__node--program" style="--node-x: 30%; --node-y: 26%;" data-node-id="diploma" data-node-group="program" data-node-title="UK Diplomas" data-node-kicker="{{ $categoryCounts['diploma'] }} diploma programs" data-node-description="Follow an internationally focused qualification path in business, technology, healthcare, and more." data-node-action="Explore UK diplomas" data-node-url="{{ route('site.home', ['category' => 'diploma']) }}#courses">
+                        <span class="public-neural__pulse"></span><span class="public-neural__core"><i class="fas fa-award"></i></span><strong>UK Diplomas</strong><small>{{ $categoryCounts['diploma'] }} PROGRAMS</small>
+                    </button>
+                    <button type="button" class="public-neural__node public-neural__node--program" style="--node-x: 30%; --node-y: 42%;" data-node-id="language" data-node-group="program" data-node-title="Languages" data-node-kicker="{{ $categoryCounts['language'] }} language courses" data-node-description="Strengthen communication for study, work, travel, and everyday professional confidence." data-node-action="Explore language courses" data-node-url="{{ route('site.home', ['category' => 'language']) }}#courses">
+                        <span class="public-neural__pulse"></span><span class="public-neural__core"><i class="fas fa-language"></i></span><strong>Languages</strong><small>{{ $categoryCounts['language'] }} COURSES</small>
+                    </button>
+                    <button type="button" class="public-neural__node public-neural__node--program" style="--node-x: 30%; --node-y: 58%;" data-node-id="healthcare" data-node-group="program" data-node-title="Healthcare" data-node-kicker="{{ $categoryCounts['nursing'] }} healthcare courses" data-node-description="Develop patient-centered knowledge and hands-on skills for care-focused roles." data-node-action="Explore healthcare" data-node-url="{{ route('site.home', ['category' => 'nursing']) }}#courses">
+                        <span class="public-neural__pulse"></span><span class="public-neural__core"><i class="fas fa-heart-pulse"></i></span><strong>Healthcare</strong><small>{{ $categoryCounts['nursing'] }} COURSES</small>
+                    </button>
+                    <button type="button" class="public-neural__node public-neural__node--program" style="--node-x: 30%; --node-y: 74%;" data-node-id="design" data-node-group="program" data-node-title="Design &amp; Multimedia" data-node-kicker="{{ $categoryCounts['design'] }} creative courses" data-node-description="Turn ideas into visual work through design, 3D, motion, editing, and multimedia production." data-node-action="Explore design courses" data-node-url="{{ route('site.home', ['category' => 'design']) }}#courses">
+                        <span class="public-neural__pulse"></span><span class="public-neural__core"><i class="fas fa-pen-ruler"></i></span><strong>Design</strong><small>{{ $categoryCounts['design'] }} COURSES</small>
+                    </button>
+                    <button type="button" class="public-neural__node public-neural__node--program" style="--node-x: 30%; --node-y: 90%;" data-node-id="short" data-node-group="program" data-node-title="Short Skills" data-node-kicker="{{ $categoryCounts['short-skills'] }} focused courses" data-node-description="Add a practical, job-ready skill through focused training designed to fit a busy schedule." data-node-action="Explore short courses" data-node-url="{{ route('site.home', ['category' => 'short-skills']) }}#courses">
+                        <span class="public-neural__pulse"></span><span class="public-neural__core"><i class="fas fa-bolt"></i></span><strong>Short Skills</strong><small>{{ $categoryCounts['short-skills'] }} COURSES</small>
+                    </button>
+
+                    <button type="button" class="public-neural__node public-neural__node--hub is-selected" style="--node-x: 55%; --node-y: 50%;" data-node-id="hub" data-node-group="hub" data-node-title="ICSA Learning Hub" data-node-kicker="{{ $courseTotal }}+ professional courses" data-node-description="Every route combines guided learning, practical experience, and support from ICSA instructors in Kuwait." data-node-action="See all courses" data-node-url="#courses" aria-current="true">
+                        <span class="public-neural__pulse"></span><span class="public-neural__core"><i class="fas fa-graduation-cap"></i></span><strong>ICSA Hub</strong><small>LEARN · PRACTICE</small>
+                    </button>
+
+                    <button type="button" class="public-neural__node public-neural__node--outcome" style="--node-x: 79%; --node-y: 24%;" data-node-id="skills" data-node-group="outcome" data-node-title="Practical Skills" data-node-kicker="Learn by doing" data-node-description="Build usable knowledge through guided exercises, projects, labs, and instructor support." data-node-action="Find a practical course" data-node-url="#courses">
+                        <span class="public-neural__pulse"></span><span class="public-neural__core"><i class="fas fa-screwdriver-wrench"></i></span><strong>Build Skills</strong><small>PRACTICAL</small>
+                    </button>
+                    <button type="button" class="public-neural__node public-neural__node--outcome" style="--node-x: 79%; --node-y: 50%;" data-node-id="certificate" data-node-group="outcome" data-node-title="Recognized Certification" data-node-kicker="Prove your progress" data-node-description="Complete your chosen program and leave with evidence of the professional development you achieved." data-node-action="View qualification paths" data-node-url="#courses">
+                        <span class="public-neural__pulse"></span><span class="public-neural__core"><i class="fas fa-certificate"></i></span><strong>Get Certified</strong><small>ACHIEVEMENT</small>
+                    </button>
+                    <button type="button" class="public-neural__node public-neural__node--outcome" style="--node-x: 79%; --node-y: 76%;" data-node-id="career" data-node-group="outcome" data-node-title="Career Growth" data-node-kicker="Turn learning into momentum" data-node-description="Use stronger skills and qualifications to prepare for new responsibilities and opportunities." data-node-action="Plan your next step" data-node-url="{{ route('site.contact') }}">
+                        <span class="public-neural__pulse"></span><span class="public-neural__core"><i class="fas fa-arrow-trend-up"></i></span><strong>Career Growth</strong><small>NEXT STEP</small>
+                    </button>
+
+                    <button type="button" class="public-neural__node public-neural__node--finish" style="--node-x: 95%; --node-y: 50%;" data-node-id="enroll" data-node-group="finish" data-node-title="Start your enrollment" data-node-kicker="Ready when you are" data-node-description="Talk with the ICSA team to choose the right schedule, course, and enrollment route." data-node-action="Contact ICSA" data-node-url="{{ route('site.contact') }}">
+                        <span class="public-neural__pulse"></span><span class="public-neural__core"><i class="fas fa-paper-plane"></i></span><strong>Enroll</strong><small>BEGIN</small>
+                    </button>
+                </div>
+            </div>
+
+            <div class="public-neural__inspector" aria-live="polite">
+                <div class="public-neural__inspector-icon"><i class="fas fa-graduation-cap" data-neural-inspector-icon></i></div>
+                <div class="public-neural__inspector-copy">
+                    <span data-neural-inspector-kicker>{{ $courseTotal }}+ professional courses</span>
+                    <h3 data-neural-inspector-title>ICSA Learning Hub</h3>
+                    <p data-neural-inspector-description>Every route combines guided learning, practical experience, and support from ICSA instructors in Kuwait.</p>
+                </div>
+                <a class="public-neural__inspector-action" href="#courses" data-neural-inspector-action>See all courses <i class="fas fa-arrow-right"></i></a>
+            </div>
+        </div>
+    </section>
+
     <!-- Course Categories -->
     <section class="section home-categories">
         <div class="container">

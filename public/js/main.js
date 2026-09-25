@@ -1052,3 +1052,145 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// Public learning network: DOM-measured SVG links with animation only on selected paths.
+(function initializeLearningNetwork() {
+    const network = document.querySelector('[data-learning-network]');
+
+    if (!network) return;
+
+    const stage = network.querySelector('.public-neural__stage');
+    const svg = network.querySelector('.public-neural__links');
+    const nodes = Array.from(network.querySelectorAll('[data-node-id]'));
+    const filters = Array.from(network.querySelectorAll('[data-neural-filter]'));
+    const inspectorTitle = network.querySelector('[data-neural-inspector-title]');
+    const inspectorKicker = network.querySelector('[data-neural-inspector-kicker]');
+    const inspectorDescription = network.querySelector('[data-neural-inspector-description]');
+    const inspectorAction = network.querySelector('[data-neural-inspector-action]');
+    const inspectorIcon = network.querySelector('[data-neural-inspector-icon]');
+    const nodeById = new Map(nodes.map((node) => [node.dataset.nodeId, node]));
+    const connections = [
+        ['explore', 'it'], ['explore', 'diploma'], ['explore', 'language'],
+        ['explore', 'healthcare'], ['explore', 'design'], ['explore', 'short'],
+        ['it', 'hub'], ['diploma', 'hub'], ['language', 'hub'],
+        ['healthcare', 'hub'], ['design', 'hub'], ['short', 'hub'],
+        ['hub', 'skills'], ['hub', 'certificate'], ['hub', 'career'],
+        ['skills', 'enroll'], ['certificate', 'enroll'], ['career', 'enroll'],
+    ];
+    let selectedId = 'hub';
+    let activeFilter = 'all';
+    let redrawFrame = null;
+
+    const svgElement = (name, attributes) => {
+        const element = document.createElementNS('http://www.w3.org/2000/svg', name);
+        Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value));
+        return element;
+    };
+
+    const drawConnections = () => {
+        const stageRect = stage.getBoundingClientRect();
+        svg.replaceChildren();
+        svg.setAttribute('viewBox', `0 0 ${stageRect.width} ${stageRect.height}`);
+
+        connections.forEach(([fromId, toId]) => {
+            const from = nodeById.get(fromId);
+            const to = nodeById.get(toId);
+            if (!from || !to) return;
+
+            const fromRect = from.getBoundingClientRect();
+            const toRect = to.getBoundingClientRect();
+            const x1 = fromRect.left - stageRect.left + (fromRect.width / 2);
+            const y1 = fromRect.top - stageRect.top + Math.min(34, fromRect.height / 2);
+            const x2 = toRect.left - stageRect.left + (toRect.width / 2);
+            const y2 = toRect.top - stageRect.top + Math.min(34, toRect.height / 2);
+            const bend = Math.max(45, Math.abs(x2 - x1) * 0.45);
+            const pathData = `M ${x1} ${y1} C ${x1 + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`;
+            const group = svgElement('g', { class: 'public-neural__link', 'data-from': fromId, 'data-to': toId });
+            group.append(svgElement('path', { class: 'public-neural__link-track', d: pathData }));
+            group.append(svgElement('path', { class: 'public-neural__link-signal', d: pathData }));
+            svg.append(group);
+        });
+
+        updateState();
+    };
+
+    const scheduleDraw = () => {
+        if (redrawFrame !== null) cancelAnimationFrame(redrawFrame);
+        redrawFrame = requestAnimationFrame(() => {
+            redrawFrame = null;
+            drawConnections();
+        });
+    };
+
+    const updateInspector = (node) => {
+        inspectorTitle.textContent = node.dataset.nodeTitle || '';
+        inspectorKicker.textContent = node.dataset.nodeKicker || '';
+        inspectorDescription.textContent = node.dataset.nodeDescription || '';
+        inspectorAction.firstChild.textContent = `${node.dataset.nodeAction || 'Explore'} `;
+        inspectorAction.href = node.dataset.nodeUrl || '#courses';
+        const icon = node.querySelector('.public-neural__core i');
+        inspectorIcon.className = icon ? icon.className : 'fas fa-circle-nodes';
+    };
+
+    const updateState = () => {
+        const selected = nodeById.get(selectedId);
+        const selectedGroup = selected ? selected.dataset.nodeGroup : null;
+
+        if (selectedGroup && activeFilter !== 'all' && ![activeFilter, 'entry', 'hub', 'finish'].includes(selectedGroup)) {
+            selectedId = 'hub';
+            updateInspector(nodeById.get('hub'));
+        }
+
+        nodes.forEach((node) => {
+            const isSelected = node.dataset.nodeId === selectedId;
+            const matchesFilter = activeFilter === 'all' || node.dataset.nodeGroup === activeFilter || ['entry', 'hub', 'finish'].includes(node.dataset.nodeGroup);
+            node.classList.toggle('is-selected', isSelected);
+            node.classList.toggle('is-muted', !matchesFilter || (selectedId && !isSelected && !isConnected(node.dataset.nodeId, selectedId)));
+            node.toggleAttribute('aria-current', isSelected);
+        });
+
+        svg.querySelectorAll('.public-neural__link').forEach((link) => {
+            const from = link.dataset.from;
+            const to = link.dataset.to;
+            const touchesSelection = from === selectedId || to === selectedId;
+            const fromNode = nodeById.get(from);
+            const toNode = nodeById.get(to);
+            const matchesFilter = activeFilter === 'all' || [fromNode, toNode].some((node) => node && node.dataset.nodeGroup === activeFilter);
+            link.classList.toggle('is-active', touchesSelection && matchesFilter);
+            link.classList.toggle('is-muted', !matchesFilter || (selectedId && !touchesSelection));
+        });
+
+    };
+
+    const isConnected = (first, second) => connections.some(([from, to]) =>
+        (from === first && to === second) || (from === second && to === first)
+    );
+
+    nodes.forEach((node) => {
+        node.addEventListener('click', () => {
+            selectedId = node.dataset.nodeId;
+            updateInspector(node);
+            updateState();
+        });
+    });
+
+    filters.forEach((filter) => {
+        filter.addEventListener('click', () => {
+            activeFilter = filter.dataset.neuralFilter;
+            filters.forEach((button) => {
+                const active = button === filter;
+                button.classList.toggle('is-active', active);
+                button.setAttribute('aria-pressed', String(active));
+            });
+            updateState();
+        });
+    });
+
+    if ('ResizeObserver' in window) {
+        new ResizeObserver(scheduleDraw).observe(stage);
+    } else {
+        window.addEventListener('resize', scheduleDraw, { passive: true });
+    }
+
+    scheduleDraw();
+})();

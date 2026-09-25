@@ -14,6 +14,10 @@ class ExampleTest extends TestCase
     {
         $response = $this->get('/');
 
-        $response->assertStatus(200);
+        $response->assertStatus(200)
+            ->assertSee('ICSA learning network')
+            ->assertSee('Interactive map of ICSA learning paths')
+            ->assertSee('Public learning paths · no personal data')
+            ->assertSee('data-learning-network', false);
     }
 }
