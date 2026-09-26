@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\InquiryController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\MessageController;
 use App\Http\Controllers\Admin\MissionControlController;
+use App\Http\Controllers\Admin\PipelineController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Api\FormController;
@@ -57,6 +58,10 @@ Route::prefix($adminPrefix)->group(function (): void {
 
         Route::get('/inquiries', [InquiryController::class, 'index'])->name('admin.inquiries.index');
         Route::get('/inquiries.php', fn () => redirect()->route('admin.inquiries.index'));
+        Route::get('/inquiries/pipeline', [PipelineController::class, 'index'])->name('admin.inquiries.pipeline');
+        Route::get('/inquiries/pipeline/snapshot', [PipelineController::class, 'snapshot'])->name('admin.inquiries.pipeline.snapshot');
+        Route::patch('/inquiries/{inquiry}/pipeline', [PipelineController::class, 'move'])
+            ->middleware('throttle:60,1')->name('admin.inquiries.pipeline.move');
         Route::get('/inquiries/export', [InquiryController::class, 'export'])->name('admin.inquiries.export');
         Route::patch('/inquiries/{inquiry}', [InquiryController::class, 'update'])->name('admin.inquiries.update');
         Route::post('/inquiries/{inquiry}/forward-whatsapp', [InquiryController::class, 'forwardToReceptionist'])

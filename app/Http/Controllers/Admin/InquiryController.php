@@ -11,6 +11,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -88,10 +89,17 @@ class InquiryController extends Controller
         ]);
 
         $before = ['status' => $inquiry->status];
-        $inquiry->update([
+        $updates = [
             'status' => $data['status'],
             'updated_by' => (int) $request->session()->get('admin_id'),
-        ]);
+        ];
+        if (Schema::hasColumn('contact_messages', 'pipeline_stage')) {
+            $updates['pipeline_stage'] = $this->pipelineStageForStatus($data['status']);
+            if (Schema::hasColumn('contact_messages', 'pipeline_moved_at')) {
+                $updates['pipeline_moved_at'] = now();
+            }
+        }
+        $inquiry->update($updates);
         $audit->record($request, 'inquiry.status_changed', 'inquiries', 'Changed the inquiry status.', ContactMessage::class, $inquiry->id, '#'.$inquiry->id.' '.$inquiry->name, $before, ['status' => $inquiry->status]);
 
         return back()->with('success', 'Inquiry updated.');
@@ -211,10 +219,17 @@ class InquiryController extends Controller
             return back()->with('success', 'Selected inquiries assigned.');
         }
 
-        $query->update([
+        $updates = [
             'status' => $data['bulk_status'] ?? ContactMessage::STATUS_NEW,
             'updated_by' => (int) $request->session()->get('admin_id'),
-        ]);
+        ];
+        if (Schema::hasColumn('contact_messages', 'pipeline_stage')) {
+            $updates['pipeline_stage'] = $this->pipelineStageForStatus($updates['status']);
+            if (Schema::hasColumn('contact_messages', 'pipeline_moved_at')) {
+                $updates['pipeline_moved_at'] = now();
+            }
+        }
+        $query->update($updates);
         $after = (clone $query)->get()->map(fn (ContactMessage $inquiry): array => $this->inquirySnapshot($inquiry))->values()->all();
         $audit->record($request, 'inquiry.status_changed', 'inquiries', 'Changed the status of '.count($items).' selected inquiries.', ContactMessage::class, implode(',', $ids), count($items).' inquiries', ['items' => $items], ['items' => $after]);
 
@@ -309,5 +324,14 @@ class InquiryController extends Controller
             'status' => $inquiry->status,
             'assigned_to' => $inquiry->assigned_to,
         ];
+    }
+
+    private function pipelineStageForStatus(string $status): string
+    {
+        return match ($status) {
+            ContactMessage::STATUS_IN_PROGRESS => 'contacted',
+            ContactMessage::STATUS_RESOLVED => 'enrolled',
+            default => 'new_lead',
+        };
     }
 }

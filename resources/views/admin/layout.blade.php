@@ -26,11 +26,15 @@
                 <a href="{{ route('admin.dashboard') }}" class="admin-sidebar-link {{ request()->routeIs('admin.dashboard') ? 'is-active' : '' }}">
                     <i class="fas fa-chart-line"></i> Dashboard
                 </a>
-                <a href="{{ route('admin.inquiries.index') }}" class="admin-sidebar-link {{ request()->routeIs('admin.inquiries.*') ? 'is-active' : '' }}">
+                <a href="{{ route('admin.inquiries.index') }}" class="admin-sidebar-link {{ request()->routeIs('admin.inquiries.index', 'admin.inquiries.update', 'admin.inquiries.destroy') ? 'is-active' : '' }}">
                     <i class="fas fa-envelope"></i> Inquiries
-                    @if (request()->routeIs('admin.inquiries.*') && isset($stats['total']))
+                    @if (isset($stats['total']))
                         <span class="admin-sidebar-count">{{ $stats['total'] }}</span>
                     @endif
+                </a>
+                <a href="{{ route('admin.inquiries.pipeline') }}" class="admin-sidebar-link admin-sidebar-pipeline {{ request()->routeIs('admin.inquiries.pipeline*') ? 'is-active' : '' }}">
+                    <i class="fas fa-table-columns"></i> Enrollment Pipeline
+                    <span class="admin-sidebar-live"><i></i> LIVE</span>
                 </a>
                 <a href="{{ route('admin.messages.index') }}" class="admin-sidebar-link {{ request()->routeIs('admin.messages.*') ? 'is-active' : '' }}">
                     <i class="fas fa-comments"></i> Messages

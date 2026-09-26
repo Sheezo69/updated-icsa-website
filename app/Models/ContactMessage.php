@@ -33,12 +33,15 @@ class ContactMessage extends Model
         'form_type',
         'analytics_visitor_hash',
         'lead_score',
+        'pipeline_stage',
+        'pipeline_moved_at',
     ];
 
     protected $casts = [
         'created_at' => 'datetime',
         'replied_at' => 'datetime',
         'lead_score' => 'integer',
+        'pipeline_moved_at' => 'datetime',
     ];
 
     public function emailAttempts(): HasMany
