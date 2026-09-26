@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\CourseController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\InquiryController;
+use App\Http\Controllers\Admin\GalaxyController;
 use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\MessageController;
 use App\Http\Controllers\Admin\MissionControlController;
@@ -111,6 +112,9 @@ Route::prefix($adminPrefix)->group(function (): void {
         Route::put('/settings/preferences', [SettingsController::class, 'updatePreferences'])->name('admin.settings.preferences');
 
         Route::middleware('admin.owner')->group(function (): void {
+            Route::get('/galaxy', [GalaxyController::class, 'index'])->name('admin.galaxy.index');
+            Route::get('/galaxy/snapshot', [GalaxyController::class, 'snapshot'])->name('admin.galaxy.snapshot');
+            Route::patch('/galaxy/inquiries/{inquiry}', [GalaxyController::class, 'act'])->middleware('throttle:60,1')->name('admin.galaxy.act');
             Route::get('/mission-control', [MissionControlController::class, 'index'])->name('admin.mission-control.index');
             Route::get('/mission-control/snapshot', [MissionControlController::class, 'snapshot'])->name('admin.mission-control.snapshot');
             Route::post('/mission-control/automate', [MissionControlController::class, 'automate'])->middleware('throttle:6,1')->name('admin.mission-control.automate');

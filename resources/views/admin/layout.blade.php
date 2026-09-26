@@ -51,6 +51,9 @@
                     </a>
                 @endif
                 @if (($currentAdmin ?? null)?->isOwner())
+                    <a href="{{ route('admin.galaxy.index') }}" class="admin-sidebar-link admin-sidebar-galaxy {{ request()->routeIs('admin.galaxy.*') ? 'is-active' : '' }}">
+                        <i class="fas fa-meteor"></i> Galaxy Mode <span>NEW</span>
+                    </a>
                     <a href="{{ route('admin.mission-control.index') }}" class="admin-sidebar-link admin-sidebar-mission {{ request()->routeIs('admin.mission-control.*') ? 'is-active' : '' }}">
                         <i class="fas fa-satellite-dish"></i> Mission Control <span>LIVE</span>
                     </a>
