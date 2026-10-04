@@ -7,6 +7,7 @@ use App\Models\AdminActivityLog;
 use App\Models\ContactMessage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 class AdminActivityLogTest extends TestCase
@@ -23,23 +24,10 @@ class AdminActivityLogTest extends TestCase
         ]);
     }
 
-    public function test_only_administrators_can_open_or_export_the_activity_log(): void
+    public function test_activity_log_page_and_export_routes_are_not_exposed(): void
     {
-        $owner = $this->account('owner', Admin::ROLE_ADMIN);
-        $staff = $this->account('staff', Admin::ROLE_STAFF);
-
-        $this->withSession(['admin_id' => $owner->id])
-            ->get(route('admin.activity.index'))
-            ->assertOk()
-            ->assertSee('Activity Log');
-
-        $this->withSession(['admin_id' => $staff->id])
-            ->get(route('admin.activity.index'))
-            ->assertRedirect(route('admin.dashboard'));
-
-        $this->withSession(['admin_id' => $staff->id])
-            ->get(route('admin.activity.export'))
-            ->assertRedirect(route('admin.dashboard'));
+        $this->assertFalse(Route::has('admin.activity.index'));
+        $this->assertFalse(Route::has('admin.activity.export'));
     }
 
     public function test_inquiry_changes_store_actor_source_and_before_after_values(): void
@@ -68,7 +56,7 @@ class AdminActivityLogTest extends TestCase
         $this->assertStringContainsString('Chrome', $log->deviceLabel());
     }
 
-    public function test_password_values_are_never_saved_and_filters_apply_to_csv(): void
+    public function test_password_values_are_never_saved_in_background_audit_records(): void
     {
         $owner = $this->account('owner', Admin::ROLE_ADMIN);
         $staff = $this->account('staff', Admin::ROLE_STAFF);
@@ -82,24 +70,6 @@ class AdminActivityLogTest extends TestCase
         $this->assertNull($stored->after_values);
         $this->assertStringNotContainsString('NeverStoreMe', json_encode($stored->toArray()));
 
-        AdminActivityLog::query()->create([
-            'admin_id' => $owner->id,
-            'actor_name' => 'owner',
-            'actor_role' => 'admin',
-            'action' => 'media.deleted',
-            'section' => 'media',
-            'subject_label' => 'old-image.jpg',
-            'description' => 'Deleted an image.',
-            'created_at' => now(),
-        ]);
-
-        $response = $this->withSession(['admin_id' => $owner->id])
-            ->get(route('admin.activity.export', ['section' => 'media']));
-
-        $response->assertOk();
-        $csv = $response->streamedContent();
-        $this->assertStringContainsString('old-image.jpg', $csv);
-        $this->assertStringNotContainsString('Reset an account password', $csv);
     }
 
     public function test_successful_login_and_logout_are_recorded(): void

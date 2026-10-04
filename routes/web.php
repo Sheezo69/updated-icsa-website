@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Admin\ActivityController;
 use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\CourseController;
@@ -116,8 +115,6 @@ Route::prefix($adminPrefix)->group(function (): void {
             Route::post('/mission-control/automate', [MissionControlController::class, 'automate'])->middleware('throttle:6,1')->name('admin.mission-control.automate');
             Route::get('/analytics', [AnalyticsController::class, 'index'])->name('admin.analytics.index');
             Route::post('/inquiries/{inquiry}/message-assignee', [MessageController::class, 'messageAssignee'])->middleware('throttle:12,1')->name('admin.inquiries.message-assignee');
-            Route::get('/activity', [ActivityController::class, 'index'])->name('admin.activity.index');
-            Route::get('/activity/export', [ActivityController::class, 'export'])->name('admin.activity.export');
             Route::get('/users', [UserController::class, 'index'])->name('admin.users.index');
             Route::get('/users.php', fn () => redirect()->route('admin.users.index'));
             Route::post('/users', [UserController::class, 'store'])->name('admin.users.store');
